@@ -1,6 +1,6 @@
 # Market Radar
 
-Personal investment research terminal. Private source repository.
+Personal investment research terminal. Public GitHub Pages deployment; repository visibility is set independently.
 
 ## Stack
 React 18, TypeScript, Vite, TradingView embed widgets, browser localStorage.
@@ -28,3 +28,6 @@ Run `npm run build`, publish the `dist` output on a static host. The Vite base i
 
 ## Next engineering milestones
 Licensed historical price adapter, persisted versioned snapshots, indicator engine with unit tests, fundamental data and quantitative backtesting with out-of-sample validation, automated source-linked daily brief.
+
+## Deployment recovery
+GitHub Pages **Source** must be **GitHub Actions**. The `Deploy Market Radar` workflow uploads the compiled `dist` directory. A Pages branch-based build of the source root will serve uncompiled TypeScript and display a blank page. Verify the browser page source references `assets/index-*.js`, not `src/main.tsx`.
