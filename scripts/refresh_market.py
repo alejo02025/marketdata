@@ -13,11 +13,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from advanced_signals import calculate
+from backtest import backtest
 
 OUT = Path(__file__).resolve().parents[1] / "public" / "data" / "market.json"
 TICKERS = ["SPY", "QQQ", "AAPL", "MSFT", "GOOGL", "AMZN", "META", "NVDA", "AVGO", "AMD", "TSLA", "UBER", "NFLX", "JPM", "V", "MA", "BRK.B", "COST"]
 PROVIDER = "Yahoo Finance chart (unofficial access)"
-SCHEMA = 2
+SCHEMA = 3
 
 def sma(xs, n):
     return sum(xs[-n:]) / n if len(xs) >= n else None
@@ -119,7 +121,7 @@ def fetch(ticker):
             meta=result.get("meta",{})
             return {"ticker":ticker,"company":meta.get("shortName") or ticker,
                 "currency":meta.get("currency","USD"),"exchange":meta.get("exchangeName",""),
-                "candles":candles[-900:],"lastSession":candles[-1]["d"],
+                "candles":candles[-1250:],"lastSession":candles[-1]["d"],
                 "price":candles[-1]["c"],"changePct":rnd(pct(candles[-1]["c"],candles[-2]["c"])),
                 "source":PROVIDER,"retrievedAt":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
                 "dataStatus":"Official Close" if meta.get("marketState")!="REGULAR" else "Delayed"}
@@ -150,9 +152,12 @@ def main():
         merged[ticker]=item
     spy=merged.get("SPY",{}).get("candles")
     for ticker,item in merged.items():
-        item["signal"]=indicators(item["candles"],spy if ticker!="SPY" else None)
-        if ticker=="SPY":
-            item["signal"]["criteria"]["Fortaleza relativa a SPY positiva (63 sesiones)"]=False
+        item["signal"]=calculate(item["candles"], spy if ticker!="SPY" else None)
+        # Reproducible fixed-rule research, not a validated trading recommendation.
+        if ticker in ("SPY","QQQ","AAPL","MSFT","NVDA","GOOGL"):
+            item["backtest"]=backtest(item["candles"],spy if ticker!="SPY" else None)
+        else:
+            item.pop("backtest",None)
         item["price"]=item["candles"][-1]["c"]
         item["lastSession"]=item["candles"][-1]["d"]
     # Never overwrite a valid old snapshot if the provider failed for every ticker.
@@ -163,7 +168,7 @@ def main():
         print("No market data available; no fabricated snapshot created",flush=True)
         return
     payload={"schema":SCHEMA,"generatedAt":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-      "provider":PROVIDER,"methodology":"Exploratory, not backtested. End-of-day technical screen only.",
+      "provider":PROVIDER,"methodology":"EMA, RSI, MACD, CMF/OBV proxy. Experimental; partial historical backtests with methodological limitations.",
       "assets":merged,"fetchedCount":len(fresh),"coverageCount":len(merged)}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,separators=(",",":"),ensure_ascii=False),encoding="utf-8")
