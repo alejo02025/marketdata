@@ -67,3 +67,16 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Verify GitHub Pages serves compiled assets
+        run: |
+          for attempt in $(seq 1 15); do
+            page="$(curl --fail --silent --show-error --location --max-time 15 "https://alejo02025.github.io/marketdata/?rev=$GITHUB_SHA" || true)"
+            if echo "$page" | grep -q '/marketdata/assets/index-' && ! echo "$page" | grep -q 'src/main.tsx'; then
+              echo "Live GitHub Pages index points to compiled assets."
+              exit 0
+            fi
+            echo "Page not propagated / incorrect HTML, attempt $attempt"
+            sleep 8
+          done
+          echo "Public page failed compiled-HTML check"
+          exit 1
