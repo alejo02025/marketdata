@@ -1,7 +1,10 @@
-export type Status = 'Oportunidad detectada'|'Cerca de activarse'|'En seguimiento'|'Sin ventaja identificada'|'Riesgo creciente'|'Insuficiente';
+export type Status = 'Oportunidad de Entrada'|'Ruptura Confirmada'|'En Seguimiento / Precaución'|'Riesgo Creciente / Deterioro'|'Sin Ventaja Identificada'|'Insuficiente';
 export type Candle = { d:string; o:number; h:number; l:number; c:number; v:number };
-export type Signal = { status:Status; setup?:string; experimental?:boolean; score:number|null; reason:string; criteria?:Record<string,boolean>; invalidation?:string; sma50?:number|null; sma200?:number|null; rsi14?:number|null; momentum63?:number|null; relative63?:number|null; distanceSma50?:number|null; distanceSma200?:number|null; drawdown252?:number|null };
-export type Asset = { ticker:string; company:string; currency:string; exchange:string; candles:Candle[]; price:number; changePct:number; lastSession:string; retrievedAt:string; dataStatus:string; source:string; signal:Signal };
+export type Signal = {status:Status;setup?:string;experimental?:boolean;score:number|null;reason:string;criteria?:Record<string,boolean>;bullish?:string[];bearish?:string[];neutral?:string[];continuation?:string;fakeout?:string;invalidation?:string;sma50?:number|null;sma200?:number|null;ema20?:number|null;ema50?:number|null;ema100?:number|null;rsi14?:number|null;rsiPrev?:number|null;macd?:number|null;macdSignal?:number|null;macdHistogram?:number|null;macdImproving?:boolean;relativeVolume?:number|null;cmf20?:number|null;obvPressure20?:number|null;institutionalProxy?:string;institutionalOwnership?:number|null;institutionalTransactions?:number|null;high52?:number|null;low52?:number|null;distance52High?:number|null;distanceSma50?:number|null;distanceSma200?:number|null;momentum63?:number|null;relative63?:number|null;dataDefinition?:string};
+export type Metrics={trades:number;winRate:number|null;profitFactor:number|null;totalReturnPct:number;annualizedReturnPct:number;buyHoldReturnPct:number|null;maxDrawdownPct:number;sharpe:number|null;sortino:number|null;avgTradePct:number|null;evidence:string};
+export type Backtest={period:{from:string;to:string;outOfSampleStart:string};full:Metrics|null;outOfSample:Metrics|null;feeAndSlippagePerSidePct:number;method:string;warnings:string[]};
+export type Daily={schema:number;date:string;title:string;bodyMarkdown:string;status:'published'|'awaiting';generatedAt?:string;sourceLinks?:{title:string;url:string}[]};
+export type Asset = { ticker:string; company:string; currency:string; exchange:string; candles:Candle[]; price:number; changePct:number; lastSession:string; retrievedAt:string; dataStatus:string; source:string; signal:Signal; backtest?:Backtest };
 export type Snapshot = { schema:number; generatedAt:string; provider:string; methodology:string; fetchedCount:number; coverageCount:number; assets:Record<string,Asset> };
 export type Trade={id:string;ticker:string;side:'buy'|'sell';quantity:number;price:number;fees:number;date:string};
 export type Position={ticker:string;quantity:number;avgCost:number;cost:number;realized:number;trades:number};
@@ -24,8 +27,9 @@ export function positionsFromTrades(operations:Trade[]):Position[]{
  }
  return [...map.values()].filter(p=>p.quantity>0).sort((a,b)=>b.cost-a.cost)
 }
-export const statusColor=(s:string)=>s==='Oportunidad detectada'?'positive':s==='Riesgo creciente'?'danger':s==='Cerca de activarse'?'amber':s==='En seguimiento'?'blue':'muted';
+export const statusColor=(s:string)=>s==='Oportunidad de Entrada'?'positive':s==='Ruptura Confirmada'?'breakout':s.startsWith('Riesgo')?'danger':s.startsWith('En Seguimiento')?'amber':'muted';
 export const sourceLinks=[
+ {label:'Finviz',description:'Screener e interés institucional (fuente externa)',url:'https://finviz.com/'},
  {label:'Yahoo Finance',description:'Acciones y cotizaciones',url:'https://finance.yahoo.com/'},
  {label:'TradingView',description:'Gráficos y tendencias',url:'https://www.tradingview.com/'},
  {label:'Balanz Research',description:'Research local',url:'https://balanz.com/reportes/research/daily/'},
