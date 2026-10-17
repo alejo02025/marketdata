@@ -1,54 +1,61 @@
-# Market Radar — Signal Intelligence
+# Market Radar · Signal Intelligence
 
-Plataforma personal para estudiar señales de acciones y ETF. Secciones: Radar, Análisis, Cartera y Daily.
+Detector personal de señales para acciones y ETF estadounidenses. **Solo tres secciones: Radar, Análisis y Daily.** Sin módulo Cartera, sin órdenes automáticas y sin cotizaciones simuladas.
 
-## Estado del producto
+## Qué está implementado
 
-- Radar: señales técnicas exploratorias de ruptura, pullback, tendencia y riesgo con condiciones visibles.
-- Análisis: gráfico propio OHLCV, medias 50 y 200, criterios activados e invalidación orientativa.
-- Cartera: operaciones locales de compra y venta, costo promedio, conexión con Radar, backup JSON.
-- Daily: fuentes originales y últimos cierres SPY/QQQ. Aún no genera un briefing actualizado de manera automática.
+- Radar de activos: confluencia de EMA/SMA, RSI, MACD, volumen relativo, niveles de 52 semanas y proxy de presión de negociación CMF/OBV.
+- Análisis: velas OHLCV y volumen; medias EMA 20/50/100/200; MACD separado; menú de 2 a 45 minutos, 1–4 horas, 1 día, 1 semana, 1/3/6/12 meses.
+- Los marcos intradía se consultan en el widget oficial TradingView. Los marcos diarios/semanales/mensuales se reconstruyen exclusivamente con velas de origen diario descargadas. **Nunca se interpolan velas intradía ficticias**. Algunos intervalos o mercados pueden requerir sesión o suscripción de TradingView.
+- Reporte de puntos alcistas, bajistas, neutrales; hipótesis de continuación, señales de fakeout e invalidación.
+- Backtest histórico exploratorio para SPY, QQQ, AAPL, MSFT, NVDA y GOOGL. Señal al cierre de t → ejecución hipotética a apertura de t+1; costes aproximados de 0,2 % por ejecución; resultados totales y último 40 % cronológico. No implica validación prospectiva ni eliminación completa de sesgos.
+- Daily: vista editorial que renderiza exactamente `bodyMarkdown` de `public/data/daily.json`. El archivo se prepara para que una automatización de ChatGPT publique la misma edición que entrega en el chat. Si falta, se indica; no se fabrica un informe diario.
 
-## Datos de mercado
+## Datos y limitaciones
 
-GitHub Actions consulta OHLCV diarios mediante el endpoint chart no oficial de Yahoo Finance. El acceso no está garantizado y puede estar limitado o restringido por el proveedor. El sitio utiliza el archivo de cierres generado durante la compilación. Cada activo conserva fecha de sesión, momento de consulta y proveedor. Si falla un ticker se conserva el último dato válido; si no hay datos auténticos se informa falta de cobertura.
-
-Las señales constituyen reglas exploratorias: NO cuentan todavía con backtesting fuera de muestra validado. No representan probabilidades de rendimiento, alertas de compra automáticas ni asesoramiento personalizado. No existe garantía de tiempo real.
+- `scripts/refresh_market.py` obtiene diarios de Yahoo Finance mediante endpoint no oficial, cuyo acceso y licencia pueden cambiar. Sin garantías de realtime.
+- Porcentaje de Institutional Ownership / Institutional Transactions: no se obtiene automáticamente de Finviz. Se incluye enlace a Finviz para consulta. **CMF/OBV no mide compras de fondos ni es Konkorde oficial.** Es solo un proxy de presión de precio/volumen.
+- Finviz inspira criterios tipo volumen relativo / máximos de 52 semanas, pero no se realiza scraping de sus pantallas.
+- Los resultados históricos corresponden al universo de supervivientes hoy, no están ajustados completamente por dividendos, sesgos de selección, impuestos u operaciones reales; el backtest es informativo y no prueba predictibilidad.
+- La watchlist editable queda en el navegador mediante localStorage y no sincroniza entre dispositivos. Ya no se guardan operaciones ni cartera en la aplicación nueva.
 
 ## Desarrollo
 
-Instalación local:
+```bash
+npm install
+npm run dev
+npm run build
+npm test
+python -m unittest discover -s scripts -p 'test_*.py' -v
+python scripts/refresh_market.py
+```
 
-    npm install
-    npm run dev
+## GitHub Pages
 
-Validación:
-
-    npm run build
-    python -m unittest discover -s scripts -p 'test_*.py' -v
-
-Actualización manual de datos:
-
-    python scripts/refresh_market.py
-
-## Publicación
-
-El repositorio contiene una sola aplicación React en src/. GitHub Pages debe utilizar Source: GitHub Actions. El workflow de deploy compila Vite, comprueba la existencia de assets y publica exclusivamente dist/. Nunca se debe publicar la raíz del repositorio con TypeScript sin compilar.
+GitHub Pages debe configurarse en **Source = GitHub Actions**. Solo publicar `dist/` (el build de Vite) y nunca el TypeScript fuente. El workflow de Deploy valida Python, compilación, navegación Playwright desktop/mobile y comprueba el HTML público servido por Pages.
 
 Sitio: https://alejo02025.github.io/marketdata/
 
-El éxito en GitHub Actions no sustituye la verificación visual en un navegador real. Si hay una pantalla en blanco, inspeccionar Console y Network.
+## Briefing compartido
 
-## Privacidad
+Contrato de archivo `public/data/daily.json`:
 
-El repositorio es público. Los datos de mercado en public/data también lo son. La cartera y watchlist se guardan exclusivamente en localStorage, sin cifrado ni sincronización. No guardar datos sensibles en dispositivos compartidos y exportar respaldos periódicamente.
+```json
+{
+  "schema": 1,
+  "date": "YYYY-MM-DD",
+  "title": "LO QUE NECESITÁS SABER PARA ARRANCAR LA JORNADA",
+  "status": "published",
+  "generatedAt": "fecha ISO",
+  "bodyMarkdown": "texto Markdown completo enviado por ChatGPT, sin diferencias",
+  "sourceLinks": []
+}
+```
 
-## Próximas fases
+La automatización existente de briefing se configuró para escribir el mismo contenido en GitHub y en el chat, cuando tenga permisos activos. Si falla la actualización, la edición web permanece como estaba; la interfaz no debe presentarla como edición nueva.
 
-1. Evaluación de señales con datos point-in-time, costes, sesgos y resultados fuera de muestra.
-2. Fuente secundaria de precios licenciada o permitida y validación de estabilidad de Yahoo.
-3. IndexedDB y exportaciones cifradas para cartera privada.
-4. Daily editorial con fuentes verificadas internacionales y argentinas.
-5. Prueba automática E2E de navegador sobre el sitio publicado.
+## Respaldo y próximos pasos
 
-Respaldo anterior: rama backup/pre-radar-v2.
+Copia de seguridad anterior: rama `backup/pre-signal-v3`. Mejoras futuras: datos point-in-time para sesgos de supervivencia, validación independiente de backtesting, propiedad institucional de fuentes autorizadas, prueba profunda de indicadores intradía, artículos Daily de producción.
+
+Solo se deben mostrar cifras de datos reales con proveedor y timestamp verificables.
