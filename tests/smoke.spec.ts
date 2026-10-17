@@ -27,9 +27,9 @@ test('watchlist persists across browser reload; no Cartera navigation',async({pa
  await expect(page.getByRole('button',{name:'Cartera',exact:true})).toHaveCount(0);
  await page.getByRole('textbox',{name:'Nuevo ticker'}).fill('PLTR');
  await page.getByRole('button',{name:'Añadir'}).click();
- await expect(page.getByRole('button',{name:'PLTR'})).toBeVisible();
+ await expect(page.locator('.ticker-name').filter({hasText:'PLTR'})).toBeVisible();
  await page.reload();
- await expect(page.getByRole('button',{name:'PLTR'})).toBeVisible();
+ await expect(page.locator('.ticker-name').filter({hasText:'PLTR'})).toBeVisible();
 });
 
 test('mobile navigation works and displays only three modules',async({page})=>{
