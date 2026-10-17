@@ -92,7 +92,7 @@ export default function App(){
  }
  return <div className="radar-app"><PulseBackdrop/>
  <header className="app-header"><div className="nav-inner">
-  <button className="identity" onClick={()=>go('radar')}><span className="identity-mark"><TrendingUp size={24}/></span><span className="identity-label"><b>MARKET<span>RADAR</span></b><small>SIGNAL INTELLIGENCE</small></span></button>
+  <button className="identity" onClick={()=>go('radar')}><span className="identity-mark"><img src={import.meta.env.BASE_URL+'logo.svg'} alt="Market Radar" width="39" height="39"/></span><span className="identity-label"><b>MARKET<span>RADAR</span></b><small>SIGNAL INTELLIGENCE</small></span></button>
   <nav className={'header-tabs '+(navOpen?'expanded':'')} aria-label="Secciones principales">{(['radar','analysis','daily'] as Page[]).map(p=><button key={p} className={page===p?'active':''} onClick={()=>go(p)}>{names[p]}</button>)}</nav>
   <div className="header-meta"><span className="market-pill"><i/> {snapshot?'COBERTURA '+snapshot.coverageCount:'SIN DATOS'}</span><span className="top-date">{runDate||'Esperando cierre'}</span><button className="header-refresh" onClick={fetchData} aria-label="Actualizar datos"><RefreshCw size={16}/></button></div>
   <button className="nav-toggle" onClick={()=>setNavOpen(!navOpen)} aria-label="Menú"><Menu size={21}/></button>
