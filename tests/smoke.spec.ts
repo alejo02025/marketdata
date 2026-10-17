@@ -6,9 +6,9 @@ test('the real browser renders and navigates all four sections',async({page})=>{
  await expect(page.getByRole('heading',{name:/Radar de oportunidades/})).toBeVisible({timeout:15000});
  await expect(page.getByText('Explorador de activos')).toBeVisible();
  await page.screenshot({path:'market-radar-desktop.png',fullPage:true});
- await page.getByRole('button',{name:'Análisis'}).click();
+ await page.getByRole('button',{name:'Análisis',exact:true}).click();
  await expect(page.getByRole('heading',{name:/Análisis de activos/})).toBeVisible();
- await page.getByRole('button',{name:'Cartera'}).click();
+ await page.getByRole('button',{name:'Cartera',exact:true}).click();
  await expect(page.getByRole('heading',{name:/Mi cartera/})).toBeVisible();
  await page.getByRole('button',{name:'Operación'}).click();
  await page.getByPlaceholder('SPY').fill('SPY');
@@ -17,9 +17,9 @@ test('the real browser renders and navigates all four sections',async({page})=>{
  await page.getByRole('button',{name:'Guardar operación'}).click();
  await expect(page.getByText('SPY',{exact:true}).first()).toBeVisible();
  await page.reload();
- await page.getByRole('button',{name:'Cartera'}).click();
+ await page.getByRole('button',{name:'Cartera',exact:true}).click();
  await expect(page.getByText('SPY',{exact:true}).first()).toBeVisible();
- await page.getByRole('button',{name:'Daily'}).click();
+ await page.getByRole('button',{name:'Daily',exact:true}).click();
  await expect(page.getByRole('heading',{name:/Market Daily/})).toBeVisible();
  expect(errors).toEqual([]);
 });
@@ -28,6 +28,6 @@ test('mobile layout has usable navigation',async({page})=>{
  await page.goto('/');
  await expect(page.getByRole('heading',{name:/Radar de oportunidades/})).toBeVisible();
  await page.getByRole('button',{name:'Menú'}).click();
- await page.getByRole('button',{name:'Análisis'}).click();
+ await page.getByRole('button',{name:'Análisis',exact:true}).click();
  await expect(page.getByRole('heading',{name:/Análisis de activos/})).toBeVisible();
 });
