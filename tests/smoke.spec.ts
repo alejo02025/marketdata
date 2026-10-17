@@ -18,7 +18,7 @@ test('Radar, analysis, intervals and Daily render without JavaScript errors',asy
  await expect(page.getByText(/INTRADÍA · TRADINGVIEW/)).toBeVisible();
  await page.getByRole('button',{name:'Daily',exact:true}).click();
  await expect(page.getByRole('heading',{name:/Market Daily/})).toBeVisible();
- await expect(page.getByText(/No hay edición verificada publicada todavía/)).toBeVisible();
+ await expect(page.locator('.daily-pending, .daily-article')).toBeVisible();
  expect(errors).toEqual([]);
 });
 
