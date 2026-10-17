@@ -39,7 +39,7 @@ function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:
  const multiplier=frame==='1W'?5:frame==='1M'?21:frame==='3M'?63:frame==='6M'?126:frame==='12M'?252:1;
  const visibleCount=Math.max(5,Math.ceil(span/multiplier));
  const data=all.slice(-visibleCount),v=all.map(x=>x.c);
- const averages=[20,50,100,200].map(n=>({n,values:ema(v,n).slice(-visibleCount)}));
+ const averages=[20,50,100,200].map(n=>({n,values:all.length>=n?ema(v,n).slice(-visibleCount):[]}));
  const m=macd(v).slice(-visibleCount);
  if(data.length<2)return <div className="chart-message">No hay suficientes velas reales para este rango. Ampliá el período.</div>;
  const W=1100,H=655,left=18,right=75,top=25,pH=390,vBase=480,vTop=412,macTop=500,macBottom=621;
@@ -56,7 +56,7 @@ function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:
  const visibleLines=[averages[0],averages[1],averages[2],averages[3]];
  return <div className="terminal-chart">
   <div className="chart-topline"><strong>OHLCV <span>· {frame} · mercado de cierre</span></strong><div><span>O {tip.o.toFixed(2)}</span><span>H {tip.h.toFixed(2)}</span><span>L {tip.l.toFixed(2)}</span><span className={tip.c>=tip.o?'chart-rise':'chart-fall'}>C {tip.c.toFixed(2)}</span></div></div>
-  <div className="chart-legend">{visibleLines.map(({n,values},i)=><span key={n}><i style={{background:Object.values(colors)[i+2]}}/>EMA {n}: <b>{values[values.length-1]?.toFixed(2)}</b></span>)}<span className="legend-right">{tip.d}</span></div>
+  <div className="chart-legend">{visibleLines.map(({n,values},i)=><span key={n}><i style={{background:Object.values(colors)[i+2]}}/>EMA {n}: <b>{values.length?values[values.length-1].toFixed(2):'—'}</b></span>)}<span className="legend-right">{tip.d}</span></div>
   <svg viewBox={'0 0 '+W+' '+H} preserveAspectRatio="none" role="img" aria-label={'Gráfico de velas '+frame+' con volumen y MACD'} onMouseLeave={()=>setHover(null)}>
    {Array.from({length:5},(_,i)=>{const yy=top+(pH-top)*i/4;return <g key={i}><line x1={left} y1={yy} x2={W-right} y2={yy} stroke="#26313e" strokeDasharray="3 6"/><text x={W-right+6} y={yy+4} fill="#8794a9" fontSize="13">{(maximum-(maximum-minimum)*i/4).toFixed(1)}</text></g>})}
    <line x1={left} y1={vBase+6} x2={W-right} y2={vBase+6} stroke="#33404d"/>
