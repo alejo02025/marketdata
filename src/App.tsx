@@ -134,33 +134,55 @@ export default function App(){
  {aged&&<div className="source-warning"><Clock3 size={16}/> Snapshot desactualizado: última descarga {snapshot?.generatedAt}. No interpretarlo como señal intradía.</div>}
 
  {page==='radar'&&<>
-  <div className="simple-heading"><div><h1>Radar<span className="title-pulse"/></h1><p>Oportunidades en acciones de EE. UU.</p></div><div className="simple-update"><span className="update-dot"/>{runDate?'Cierre · '+runDate:'Sin datos verificados'}<button onClick={fetchData} aria-label="Actualizar datos"><RefreshCw size={15}/></button></div></div>
-  <div className="simple-stats">
-   <div className="simple-stat"><b>{snapshot?String(todayEvents.length).padStart(2,'0'):'—'}</b><span>Alertas del cierre</span></div>
-   <div className="simple-stat"><b>{snapshot?String(signalEvents.length).padStart(2,'0'):'—'}</b><span>Señales recientes</span></div>
-   <div className="simple-stat"><b>{snapshot?String(risks.length).padStart(2,'0'):'—'}</b><span>En precaución</span></div>
-   <div className="simple-stat"><b>{snapshot?String(snapshot.coverageCount).padStart(2,'0'):'—'}</b><span>Activos con datos</span></div>
+  <div className="board-heading"><div><span className="board-overline">MARKET RADAR / STOCKS</span><h1>Panel de acciones<span>.</span></h1><p>Detectá fortaleza, zonas de entrada y riesgos. Sin ruido.</p></div><div className="board-asof"><Clock3 size={14}/><span>Último cierre: {runDate||'sin datos'}</span><button onClick={fetchData} aria-label="Actualizar datos de mercado" title="Actualizar"><RefreshCw size={16}/></button></div></div>
+  <div className="board-market-tape">{['SPY','QQQ','GOOGL','NVDA'].filter(t=>assets[t]).map(t=>{const a=assets[t];return <button type="button" key={t} onClick={()=>setTicker(t)} className={'board-tape-item '+(t===ticker?'selected':'')}><strong>{t}</strong><span>{money(a.price,a.currency)}</span><small className={a.changePct>=0?'up':'down'}>{percentage(a.changePct,true)}</small></button>})}<span className="board-tape-foot">Precios de cierre · Yahoo Finance</span></div>
+  <div className="board-summary"><div><b className="board-signal-green">{entriesCount}</b><span>Para estudiar</span></div><div><b className="board-signal-amber">{nearCount}</b><span>Cerca de entrada</span></div><div><b>{trendCount}</b><span>Tendencia fuerte</span></div><div><b className="board-signal-rose">{riskCount}</b><span>En riesgo</span></div></div>
+  <div className="board-section-intro"><div><span className="board-overline">SCANNER / RESEARCH</span><h2>Mercado de acciones</h2></div><span>{assetsCovered.length} activos con datos</span></div>
+  <div className="board-workspace">
+   <section className="board-list-pane" aria-label="Lista de acciones">
+    <div className="board-list-tools"><div className="board-search"><Search size={16}/><input placeholder="Buscar empresa o ticker" aria-label="Buscar empresa o ticker" value={query} onChange={e=>setQuery(e.target.value)}/></div><span className="board-list-total">{boardStocks.length} activos</span></div>
+    <div className="board-filter-tabs" role="group" aria-label="Filtrar acciones">{['Todas','Entradas','Cerca','Tendencia','Riesgo'].map(x=><button key={x} aria-pressed={filter===x} className={filter===x?'selected':''} onClick={()=>setFilter(x)}>{x}</button>)}</div>
+    <div className="board-list-head"><span>ACTIVO</span><span>PRECIO / DÍA</span><span>LECTURA</span></div>
+    <div className="board-stock-scroll">{boardStocks.map(t=>{const a=assets[t],state=a?.signal.decision?.state||'Sin datos';return <button type="button" className={'board-stock '+(t===focusTicker?'active':'')} key={t} aria-pressed={t===focusTicker} onClick={()=>setTicker(t)}>
+     <div className="board-stock-name"><span className="board-symbol">{t.slice(0,1)}</span><div><b>{t}</b><small>{a?.company||'Sin cobertura'}</small></div></div>
+     <div className="board-stock-quote"><b>{money(a?.price,a?.currency)}</b><small className={(a?.changePct||0)>=0?'up':'down'}>{percentage(a?.changePct,true)}</small></div>
+     <span className={'board-stock-state '+focusTone(state)}>{state}</span>
+    </button>})}{!boardStocks.length&&<div className="board-no-results">No hay acciones para este filtro. Probá «Todas».</div>}</div>
+   </section>
+   <section className="board-focus-pane" aria-label="Acción seleccionada">
+    {focusAsset?<><div className="board-focus-top">
+      <div className="board-focus-identity"><span className="board-focus-logo">{focusTicker.slice(0,1)}</span><div><span className="board-overline">{focusAsset.company}</span><h3>{focusTicker}</h3><small>{focusAsset.exchange} · Acciones y ETFs</small></div></div>
+      <span className={'board-focus-state '+focusTone(focusAsset.signal.decision?.state||'')}>{assetStatus(focusAsset)}</span>
+    </div>
+    <div className="board-focus-price"><strong>{money(focusAsset.price,focusAsset.currency)}</strong><span className={focusAsset.changePct>=0?'up':'down'}>{percentage(focusAsset.changePct,true)} último cierre</span></div>
+    <Sparkline asset={focusAsset}/>
+    <div className="board-focus-metrics">
+      <div><span>Fuerza vs SPY · 3M</span><strong className={(focusAsset.signal.decision?.relativeStrength63||0)>=0?'up':'down'}>{percentage(focusAsset.signal.decision?.relativeStrength63,true)}</strong></div>
+      <div><span>Distancia SMA 200</span><strong>{percentage(focusAsset.signal.distanceSma200,true)}</strong></div>
+      <div><span>Volumen relativo</span><strong>{focusAsset.signal.relativeVolume?.toFixed(2)??'—'}x</strong></div>
+      <div><span>Riesgo · ATR diario</span><strong>{percentage(focusAsset.signal.decision?.atrPct)}</strong></div>
+    </div>
+    <div className={'board-focus-insight '+focusTone(focusAsset.signal.decision?.state||'')}>
+      <div><span>LECTURA DEL RADAR</span><strong>{assetStatus(focusAsset)}</strong></div>
+      <p>{focusAsset.signal.decision?.why||focusAsset.signal.reason}</p>
+      <div className="board-next"><b>QUÉ OBSERVAR</b><span>{focusAsset.signal.decision?.next||'Revisar indicadores y contexto.'}</span></div>
+    </div>
+    <div className="board-focus-actions"><span>Cierre {displayDate(focusAsset.lastSession)} · {focusAsset.dataStatus}</span><button type="button" onClick={()=>analyze(focusTicker)}>Análisis completo <ChevronRight size={17}/></button></div>
+    </>:<div className="board-no-results">Seleccioná una acción para ver su análisis.</div>}
+   </section>
   </div>
-  <div className="simple-section-title"><div><span className="mini-label">01 / DETECTOR</span><h2>Alertas del último cierre</h2></div><span className="section-count">{todayEvents.length} señales</span></div>
-  {todayEvents.length?<div className="simple-cards">{todayEvents.map((h,i)=><button className={'simple-signal-card '+(h.stage==='Alerta temprana'?'early':'confirmed')} key={h.ticker+h.code+i} onClick={()=>analyze(h.ticker)}>
-   <div className="simple-card-top"><strong>{h.ticker}</strong><span className={'simple-stage '+(h.stage==='Alerta temprana'?'watch':'active')}>{stageShort(h.stage)}</span></div>
-   <div className="simple-card-main"><span>{strategyTitle(h.code)}</span><b>{money(h.price,h.currency)}</b></div>
-   <div className="simple-card-foot"><span>{displayDate(h.date)} · Cierre</span><span>Ver gráfico <ChevronRight size={15}/></span></div>
-  </button>)}</div>:<div className="simple-empty"><Check size={19}/><div><b>Sin alertas nuevas</b><span>Podés revisar las últimas señales más abajo.</span></div></div>}
-  <div className="simple-section-title"><div><span className="mini-label">02 / HISTORIAL</span><h2>Señales anteriores</h2></div><span className="section-count">Históricas · precio de la señal</span></div>
-  {signalEvents.length?<div className="simple-cards history">
-  {signalEvents.map((h,i)=><button className="simple-signal-card past" key={h.ticker+h.date+(h.setupCode||'')+i} onClick={()=>analyze(h.ticker)}>
-   <div className="simple-card-top"><strong>{h.ticker}</strong><span className="simple-past-date">{displayDate(h.date)}</span></div>
-   <div className="simple-card-main"><span>{h.setupLabel||strategyTitle(h.setupCode||'')}</span><b>{money(h.price,h.currency)}</b></div>
-   <div className="simple-card-foot"><span>{stageShort(h.stage||'')}</span><span>Analizar <ChevronRight size={15}/></span></div>
-  </button>)}
-  </div>:<div className="simple-empty"><Clock3 size={19}/><div><b>Preparando historial</b><span>Se mostrarán señales reales cuando haya datos verificados.</span></div></div>}
-  <div className="simple-section-title"><div><span className="mini-label">03 / MERCADO</span><h2>Explorar activos</h2></div><span className="section-count">{results.length} de {watch.length}</span></div>
-  <div className="simple-filters"><div className="finder"><Search size={16}/><input aria-label="Buscar ticker" placeholder="Buscar acción..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="select-wrap"><Filter size={14}/><select aria-label="Filtrar señales" value={filter} onChange={e=>setFilter(e.target.value)}>{filters.map(f=><option key={f} value={f}>{f==='Oportunidad de Entrada'?'Posible entrada':f==='Ruptura Confirmada'?'Ruptura':f==='En Seguimiento / Precaución'?'En seguimiento':f==='Riesgo Creciente / Deterioro'?'Precaución':f==='Sin Ventaja Identificada'?'Sin señal':f}</option>)}</select><ChevronDown size={13}/></div></div>
-  <div className="simple-table-wrap"><table className="simple-table"><thead><tr><th>Activo</th><th>Último cierre</th><th>Cambio</th><th>RSI</th><th>Señal</th><th/></tr></thead><tbody>{results.map(t=>{const a=assets[t];return <tr key={t} tabIndex={0} role="button" onClick={()=>analyze(t)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();analyze(t)}}}><td><strong>{t}</strong><small>{a?.company||'Sin cobertura'}</small></td><td>{money(a?.price,a?.currency)}</td><td className={(a?.changePct||0)>=0?'up':'down'}>{percentage(a?.changePct,true)}</td><td>{a?.signal.rsi14?.toFixed(0)||'—'}</td><td><span className={'simple-status '+(a?.signal.setups?.[0]?.stage==='Alerta temprana'?'early':statusColor(a?.signal.status||''))}>{a?assetStatus(a):'Sin datos'}</span></td><td><ChevronRight size={15}/></td></tr>})}</tbody></table>{results.length===0&&<div className="simple-empty">No hay activos para este filtro.</div>}</div>
-  <details className="simple-disclosure"><summary>¿Cómo funcionan las señales?</summary><div><p><b>Toque EMA 20:</b> posible entrada cuando una vela toca la media móvil de 20 días en una tendencia alcista.</p><p><b>Golden Cross:</b> cruce SMA 50 / SMA 200 con volumen; confirma tendencia, no un precio óptimo de entrada.</p><p><b>Ruptura:</b> precio supera máximos previos con volumen.</p><p>Son alertas técnicas experimentales, no recomendaciones automáticas. Los scores no son probabilidades. Los datos son del último cierre verificado.</p></div></details>
+  <div className="board-section-intro board-history-header"><div><span className="board-overline">OPPORTUNITY LOG / VERIFIED</span><h2>Últimas señales registradas</h2></div><span>Visibles con el mercado cerrado</span></div>
+  <div className="board-history">
+   {signalEvents.length?signalEvents.map((h,i)=><button type="button" className="board-history-row" key={h.ticker+h.date+(h.setupCode||'')+i} onClick={()=>analyze(h.ticker)}>
+    <span className="board-history-date">{displayDate(h.date)}</span><b>{h.ticker}</b><span className="board-history-signal">{strategyTitle(h.setupCode||'')}</span><span className="board-history-stage">{stageShort(h.stage||'')}</span><span className="board-history-price">{money(h.price,h.currency)}</span><ChevronRight size={15}/>
+   </button>):<div className="board-history-empty">Todavía no hay eventos verificables dentro de las últimas 125 ruedas. El panel de acciones sigue disponible.</div>}
+  </div>
+  <details className="board-method"><summary>¿Cómo decide el Radar? <ChevronDown size={15}/></summary>
+   <p>Primero busca una tendencia principal alcista y compara la fuerza relativa frente a SPY. Después exige liquidez suficiente, controla la volatilidad y distingue entre recuperación desde soporte y ruptura de máximos con volumen. Los activos sin señal se mantienen visibles.</p>
+   <p><b>Estados:</b> «Entrada a estudiar» y «Ruptura a estudiar» son hipótesis técnicas, no órdenes de compra. «Cerca de entrada» requiere confirmación. El nivel de invalidación es una referencia calculada mediante soporte y ATR, no un stop recomendado.</p>
+   <p>Metodología experimental. Se muestran datos al cierre; prioridad técnica no equivale a probabilidad de rentabilidad. <LinkOut href="https://finance.yahoo.com/">Fuente de precios</LinkOut>.</p>
+  </details>
  </>}
-
  {page==='analysis'&&<>
   <div className="simple-heading"><div><h1>Análisis<span className="title-pulse"/></h1><p>Precio, tendencia y señales</p></div><div className="asset-select"><select aria-label="Activo seleccionado" value={ticker} onChange={e=>setTicker(e.target.value)}>{[...new Set([ticker,...watch])].map(t=><option key={t}>{t}</option>)}</select><ChevronDown size={15}/></div></div>
   {current?<>
