@@ -101,9 +101,30 @@ def calculate(candles,spy=None):
         spy_map={x["d"]:x["c"] for x in spy if x["d"]<=c["d"]}
         a=spy_map.get(candles[-64]["d"]);b=spy_map.get(c["d"])
         if a and b:spy_rel=(last/v[-64]-b/a)*100
-    trend=last>s200 and s50>s200 and s200>=prev200
+    # Evaluate each moving average independently; there is no mandatory 50/200 crossing.
+    ma_values=[("ma20","EMA 20",ema20[-1],ema20[-6],5),
+               ("ma50","SMA 50",s50,mean(v[-55:-5]),5),
+               ("ma200","SMA 200",s200,prev200,20)]
+    moving_averages={}
+    for code,label,value,previous,days in ma_values:
+        above=last>=value
+        rising=value>=previous
+        touched=c["l"]<=value<=c["h"]
+        near=abs(last-value)<=atr*1.15
+        recovered=touched and above and c["c"]>c["o"] and c["c"]>v[-2] and r>=pr
+        moving_averages[code]={
+            "label":label,"value":safe(value),"distancePct":safe(pct(last,value)),
+            "slopePct":safe(pct(value,previous)),"slopeDays":days,
+            "above":above,"rising":rising,"touched":touched,
+            "near":near,"recovered":recovered,
+            "reading":("Arriba" if above else "Debajo")+" · "+("subiendo" if rising else "bajando")
+        }
+    m20=moving_averages["ma20"];m50=moving_averages["ma50"];m200=moving_averages["ma200"]
+    short=m20["above"] and m20["rising"]
+    intermediate=m50["above"] and m50["rising"]
+    trend=m200["above"] and m200["rising"]
     leading=spy_rel is not None and spy_rel>0
-    risk=(last<s200 and s50<s200) or (last<s200 and s200<prev200)
+    risk=not m200["above"] and not m200["rising"]
     risk_high=atr_pct is not None and atr_pct>8
     # A price may be extended even when trend and momentum are strong.
     extension=(last-ema20[-1])/atr if atr>0 else 999
