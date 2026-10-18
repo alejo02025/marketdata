@@ -63,8 +63,8 @@ def pct(a,b):
 def calculate(candles,spy=None):
     """Decision support for medium/long-term research; EOD, causal, experimental.
 
-    Filters: tradable liquidity, primary 50/200-session trend and momentum vs SPY.
-    Entry hypotheses: pullback/recovery or volume-backed 55-session breakout.
+    EMA20 (short), SMA50 (medium) and SMA200 (long) are independent components.
+    Filters include liquidity, SPY relative strength and volatility, not a 50/200 cross.
     A setup is not a trade order, win probability, or validated alpha.
     """
     if len(candles)<220:
@@ -229,10 +229,13 @@ def calculate(candles,spy=None):
                   "movingAverages":moving_averages,"focusAverage":focus_code,
                   "alignedAverages":bool(short and intermediate and trend),
                   "signalDate":c["d"],"method":"EMA 20 + SMA 50 + SMA 200 evaluated independently"},
-      "criteria":{"Tendencia SMA 50 / SMA 200":trend,"Fortaleza frente a SPY positiva":leading,
+      "criteria":{"EMA 20: precio arriba y pendiente positiva":short,
+                  "SMA 50: precio arriba y pendiente positiva":intermediate,
+                  "SMA 200: precio arriba y pendiente positiva":trend,
+                  "Fortaleza frente a SPY positiva":leading,
                   "Liquidez diaria ≥ USD 20 M":liquid,"ATR menor al 8%":not risk_high,
-                  "Zona de entrada":in_zone,"Retroceso recuperado":pullback_confirmed,
-                  "Ruptura con volumen":breakout},
+                  "Zona de entrada en alguna de las tres":in_zone,
+                  "Rebote confirmado":pullback_confirmed,"Ruptura con volumen":breakout},
       "bullish":bullish,"bearish":bearish,"neutral":neutral,
       "continuation":"Cierres sobre la zona de soporte y fuerza relativa sostenida; evaluar volumen en ruptura.",
       "fakeout":"Un cierre bajo soporte, pérdida de SMA 200 o retorno bajo la resistencia invalida la hipótesis.",
@@ -249,5 +252,5 @@ def calculate(candles,spy=None):
       "distance52High":safe(pct(last,high252)),"distanceSma50":safe(pct(last,s50)),
       "distanceSma200":safe(pct(last,s200)),"momentum63":safe(momentum_63),
       "relative63":safe(spy_rel),
-      "dataDefinition":"El flujo CMF/OBV es una medida indirecta, no tenencias de fondos."
+      "dataDefinition":"EMA 20, SMA 50 y SMA 200 se evalúan por separado. CMF/OBV son indicadores indirectos, no tenencias de fondos."
     }
