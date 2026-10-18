@@ -460,3 +460,12 @@ button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visi
 .backtest-panel .simple-table{min-width:760px}
 .backtest-panel .simple-table th,.backtest-panel .simple-table td{display:table-cell!important;width:auto!important}
 .simple-status.early{background:#433623;color:#ecc98d}
+
+/* Keep research sources useful without a second wall of cards. */
+.source-grid{display:flex;flex-wrap:wrap;gap:8px}
+.source-tile{display:inline-flex;align-items:center;gap:9px;padding:12px 14px;min-height:44px;flex:0 1 auto}
+.source-tile>span,.source-tile>p{display:none}
+.source-tile h3{margin:0;font-size:12px}
+.source-tile>svg{position:static;width:13px;height:13px}
+.simple-time-group>button:hover:not(.active){background:transparent;color:#d0dded}
+@media(max-width:650px){.simple-cards.history .simple-signal-card{gap:8px;padding:12px}.daily-hero h2{font-size:22px}.source-tile{flex:1 1 140px}.simple-cards.history .simple-card-main b{font-size:17px}}
