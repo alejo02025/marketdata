@@ -42,6 +42,19 @@ function Sparkline({asset}:{asset:Asset}){
   <div className="board-spark-dates"><span>{displayDate(first.d)}</span><span>{displayDate(last.d)}</span></div>
  </div>
 }
+function MovingAveragePanel({asset}:{asset:Asset}){
+ const ma=asset.signal.decision?.movingAverages;
+ if(!ma)return <div className="ma-unavailable">El análisis de medias 20 / 50 / 200 se actualizará con el próximo snapshot.</div>;
+ const rows=['ma20','ma50','ma200'] as const;
+ return <div className="ma-three-grid" aria-label="Análisis separado de medias 20, 50 y 200">
+  {rows.map(code=>{const x=ma[code];return <div key={code} className={'ma-reading '+(x.above&&x.rising?'ma-strong':!x.above&&!x.rising?'ma-weak':'ma-mixed')}>
+   <div className="ma-head"><b>{x.label}</b><span>{code==='ma20'?'Corto':code==='ma50'?'Mediano':'Largo'} plazo</span></div>
+   <div className="ma-value">{money(x.value,asset.currency)}</div>
+   <div className="ma-trend"><strong>{x.above?'Precio arriba':'Precio debajo'}</strong><small>{x.rising?'↗ Ascendente':'↘ Descendente'}</small></div>
+   <div className="ma-foot"><span className={(x.distancePct??0)>=0?'up':'down'}>{percentage(x.distancePct,true)} vs. media</span><span>{x.touched?'Tocó la media':x.near?'Cerca de la media':'Sin contacto'}</span></div>
+  </div>})}
+ </div>;
+}
 function RatingGroup({title,tone,items}:{title:string;tone:string;items:string[]}){return <section className={'signal-points '+tone}><div className="points-title"><span className="point-icon"/>{title}<strong>{items.length}</strong></div>{items.length?<ul>{items.map((x,i)=><li key={i}>{x}</li>)}</ul>:<p className="unavailable">Sin observaciones concluyentes.</p>}</section>}
 function BacktestPanel({asset}:{asset:Asset}){
  const bt=asset.backtest;
@@ -156,6 +169,8 @@ export default function App(){
     </div>
     <div className="board-focus-price"><strong>{money(focusAsset.price,focusAsset.currency)}</strong><span className={focusAsset.changePct>=0?'up':'down'}>{percentage(focusAsset.changePct,true)} último cierre</span></div>
     <Sparkline asset={focusAsset}/>
+    <div className="ma-section-title">MEDIAS MÓVILES · 20 / 50 / 200</div>
+    <MovingAveragePanel asset={focusAsset}/>
     <div className="board-focus-metrics">
       <div><span>Fuerza vs SPY · 3M</span><strong className={(focusAsset.signal.decision?.relativeStrength63||0)>=0?'up':'down'}>{percentage(focusAsset.signal.decision?.relativeStrength63,true)}</strong></div>
       <div><span>Distancia SMA 200</span><strong>{percentage(focusAsset.signal.distanceSma200,true)}</strong></div>
@@ -191,6 +206,8 @@ export default function App(){
     <div className="simple-asset-state"><span className={'simple-status '+(current.signal.setups?.[0]?.stage==='Alerta temprana'?'early':statusColor(current.signal.status))}>{assetStatus(current)}</span><small>{displayDate(current.lastSession)} · {current.dataStatus}</small><small>Descarga: {current.retrievedAt}</small></div>
    </div>
    <section className="chart-card"><Suspense fallback={<div className="chart-message">Cargando gráfico…</div>}><PriceChart ticker={ticker} candles={current.candles}/></Suspense></section>
+   <div className="ma-section-title ma-analysis-title">LECTURA INDEPENDIENTE DE MEDIAS · 20 / 50 / 200</div>
+   <MovingAveragePanel asset={current}/>
    <div className="simple-indicators">
     <div><span>Fortaleza vs SPY · 63 ruedas</span><strong className={(current.signal.decision?.relativeStrength63||0)>=0?'up':'down'}>{percentage(current.signal.decision?.relativeStrength63,true)}</strong></div>
     <div><span>Distancia SMA 200</span><strong>{percentage(current.signal.distanceSma200,true)}</strong></div>
