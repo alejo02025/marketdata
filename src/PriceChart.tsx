@@ -83,7 +83,7 @@ function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:
    <path d={path(m.map(x=>x.macd),Ymac)} fill="none" stroke="#4b8fff" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
    <path d={path(m.map(x=>x.signal),Ymac)} fill="none" stroke="#faac4e" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
    {hover!==null&&<line x1={X(hover)} x2={X(hover)} y1={top} y2={macBottom} stroke="#cdd9ec" strokeDasharray="4 5" opacity=".55"/>}
-   {[0,.25,.5,.75,1].map((fraction,i)=>{const index=Math.min(data.length-1,Math.floor((data.length-1)*fraction));const date=new Date(data[index].d+'T12:00:00Z');const label=date.toLocaleDateString('es-AR',{timeZone:'UTC',day:range==='1M'||range==='3M'?'2-digit':undefined,month:'short',year:range==='MAX'||range==='1A'?'2-digit':undefined});return <text key={i} x={X(index)} y={H-10} textAnchor={i===0?'start':i===4?'end':'middle'} fill="#8292a4" fontSize="14">{label}</text>})}
+   {[0,.25,.5,.75,1].map((fraction,i)=>{const index=Math.min(data.length-1,Math.floor((data.length-1)*fraction));const date=new Date(data[index].d+'T12:00:00Z');const label=date.toLocaleDateString('es-AR',{timeZone:'UTC',day:range==='1M'||range==='3M'?'2-digit':undefined,month:'short',year:['1A','3A','5A','MAX'].includes(range)?'2-digit':undefined});return <text key={i} x={X(index)} y={H-10} textAnchor={i===0?'start':i===4?'end':'middle'} fill="#8292a4" fontSize="14">{label}</text>})}
   </svg>
   <div className="chart-footer"><span>Velas verificadas · {data.length} períodos</span><span>Variación del tramo: {percentage((data[data.length-1].c/data[0].c-1)*100,true)}</span></div>
  </div>;
