@@ -36,7 +36,7 @@ def metric(trades, equity, benchmark):
         'evidence':'limited' if len(trades)<10 else 'sample',
     }
 
-STRATEGIES = ('ema20_touch', 'golden_cross', 'breakout')
+STRATEGIES = ('trend_pullback', 'trend_breakout')
 
 def simulate(candles, signals, start, end, strategy, spy=None, cost=COST_ONE_WAY):
     cash=1.;shares=0.;entry=None;trades=[];equity=[]
@@ -45,7 +45,7 @@ def simulate(candles, signals, start, end, strategy, spy=None, cost=COST_ONE_WAY
         if i==end-1:break
         signal=signals[i]
         events=signal.get('setups',[])
-        enter=any(e['code']==strategy and e['stage']!='Alerta temprana' for e in events)
+        enter=any(e['code']==strategy and e['stage']=='Confirmación' for e in events)
         exit_now=shares>0 and (c['c']<signal['sma50'] or i-entry[0]>=126)
         nxt=candles[i+1]
         if exit_now:
@@ -70,7 +70,7 @@ def simulate(candles, signals, start, end, strategy, spy=None, cost=COST_ONE_WAY
 def backtest(candles,spy=None):
     if len(candles)<330:return None
     start=220;end=len(candles);split=start+int((end-start)*.6)
-    signals={i:calculate(candles[:i+1]) for i in range(start,end)}
+    signals={i:calculate(candles[:i+1],spy[:i+1] if spy else None) for i in range(start,end)}
     strategies={}
     for code in STRATEGIES:
         strategies[code]={
@@ -80,12 +80,12 @@ def backtest(candles,spy=None):
             'higherCost':simulate(candles,signals,start,end,code,spy,cost=.005)}
     return {
         'period':{'from':candles[start]['d'],'to':candles[-1]['d'],'outOfSampleStart':candles[split]['d']},
-        'strategies':strategies,'full':strategies['ema20_touch']['full'],'outOfSample':strategies['ema20_touch']['outOfSample'],
+        'strategies':strategies,'full':strategies['trend_pullback']['full'],'outOfSample':strategies['trend_pullback']['outOfSample'],
         'feeAndSlippagePerSidePct':COST_ONE_WAY*100,
-        'method':'Cada estrategia por separado. Solo eventos confirmados. Señal al cierre t, ejecución en apertura t+1. Una posición sin apalancamiento; salida bajo SMA50 o tras 126 sesiones. Liquidación al cierre final. Cada subperíodo empieza en efectivo. Costos: 0,20% por lado y prueba a 0,50%. Benchmarks: retorno de precio bruto, sin dividendos.',
+        'method':'Dos estrategias investigadas por separado: continuación tras retroceso y ruptura con fuerza relativa. Solo eventos confirmados. Señal al cierre t, ejecución en apertura t+1. Una posición sin apalancamiento; salida bajo SMA50 o tras 126 sesiones. Liquidación al cierre final. Cada subperíodo empieza en efectivo. Costos: 0,20% por lado y prueba a 0,50%. Benchmarks: retorno de precio bruto, sin dividendos.',
         'warnings':['Survivorship/selection bias: universo de ganadores actuales, no universo histórico.',
             'Sin dividendos reinvertidos, impuestos ni garantía de ajustes corporativos correctos.',
             'Último 40% es un holdout retrospectivo, NO una prueba independiente fuera de muestra.',
             'Costos fijos y fills diarios simplificados. Las liquidaciones finales cuentan como operaciones.',
-            'No hay optimización ni evidencia estadística de superioridad. Pocas operaciones implican evidencia insuficiente.']
+            'Reglas propuestas, no calibradas ni validadas de forma independiente. Pocas operaciones implican evidencia insuficiente.']
     }
