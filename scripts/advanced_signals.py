@@ -147,8 +147,8 @@ def calculate(candles,spy=None):
 
     if risk:
         state="Riesgo elevado";setup="risk";status="Riesgo Creciente / Deterioro"
-        why="Precio y medias de largo plazo con deterioro."
-        next_step="Esperar una recuperación clara de la tendencia."
+        why="El precio está debajo de SMA 200 y su pendiente es negativa."
+        next_step="Evaluar recuperación sobre SMA 200 y la lectura separada de 20 y 50."
     elif not liquid:
         state="Sin prioridad";setup="illiquid";status="Sin Ventaja Identificada"
         why="Liquidez insuficiente para los filtros del detector."
@@ -163,24 +163,24 @@ def calculate(candles,spy=None):
         next_step="Vigilar que mantenga el nivel de ruptura."
     elif pullback_confirmed:
         state="Entrada a estudiar";setup="trend_pullback";status="Oportunidad de Entrada"
-        why="Retroceso controlado con recuperación y tendencia favorable."
-        next_step="Verificar soporte y riesgo antes de tomar una decisión."
+        why="Rebote sobre "+focus_average["label"]+" dentro de una tendencia favorable."
+        next_step="Vigilar el soporte de "+focus_average["label"]+" y el riesgo de invalidación."
     elif candidate:
         state="Cerca de entrada";setup="watch";status="En Seguimiento / Precaución"
-        why="Acción fuerte cerca de una zona técnica; falta rebote confirmado."
-        next_step="Observar recuperación del cierre y del momentum."
+        why="Acción fuerte cerca de "+focus_average["label"]+"; falta confirmar recuperación."
+        next_step="Observar reacción en "+focus_average["label"]+" al cierre."
     elif qualifies and extension>3:
         state="Muy extendida";setup="extended";status="En Seguimiento / Precaución"
         why="Tendencia positiva, pero precio alejado de su soporte dinámico."
         next_step="Esperar un retroceso ordenado."
     elif qualifies:
         state="Tendencia fuerte";setup="trend";status="En Seguimiento / Precaución"
-        why="Tendencia principal y fuerza relativa favorables."
-        next_step="Esperar una zona de entrada o una ruptura con volumen."
+        why="SMA 200 positiva y fuerza relativa favorable; 20 y 50 se analizan por separado."
+        next_step="Esperar una entrada en alguna media o ruptura con volumen."
     else:
         state="Sin señal";setup="neutral";status="Sin Ventaja Identificada"
-        why="No coincide la tendencia, fortaleza relativa y liquidez requeridas."
-        next_step="Mantener en observación, sin forzar entradas."
+        why="No coinciden las condiciones necesarias de tendencia, fortaleza y liquidez."
+        next_step="Revisar las medias 20, 50 y 200 por separado sin forzar entradas."
 
     # Priority orders the stock universe; it is NOT a probability of rising.
     # Separate weights for the short, medium and long averages (not a cross-based score).
@@ -226,7 +226,9 @@ def calculate(candles,spy=None):
                   "invalidationPrice":safe(invalidation_price),"relativeStrength63":safe(spy_rel),
                   "atr14":safe(atr),"atrPct":safe(atr_pct),"extensionAtr":safe(extension),
                   "trendConfirmed":bool(trend),"liquid":bool(liquid),"candidate":bool(candidate),
-                  "signalDate":c["d"],"method":"Trend + Relative Strength + Entry Zone"},
+                  "movingAverages":moving_averages,"focusAverage":focus_code,
+                  "alignedAverages":bool(short and intermediate and trend),
+                  "signalDate":c["d"],"method":"EMA 20 + SMA 50 + SMA 200 evaluated independently"},
       "criteria":{"Tendencia SMA 50 / SMA 200":trend,"Fortaleza frente a SPY positiva":leading,
                   "Liquidez diaria ≥ USD 20 M":liquid,"ATR menor al 8%":not risk_high,
                   "Zona de entrada":in_zone,"Retroceso recuperado":pullback_confirmed,
