@@ -43,6 +43,14 @@ class AdvancedTests(unittest.TestCase):
         self.assertTrue(0 <= current['decision']['priority'] <= 100)
         future=rows(481)
         self.assertEqual(current['decision'],calculate(future[:480],spy)['decision'])
+    def test_three_moving_averages(self):
+        signal=calculate(rows())
+        ma=signal['decision']['movingAverages']
+        self.assertEqual(set(ma),{'ma20','ma50','ma200'})
+        for k in ma:
+            self.assertIn('touched',ma[k])
+            self.assertIn('distancePct',ma[k])
+            self.assertIn('slopePct',ma[k])
     def test_volume_and_cmf(self):
         self.assertIsNotNone(cmf(rows()))
         s=calculate(rows())
