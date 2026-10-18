@@ -5,11 +5,11 @@ import {ChevronDown,ExternalLink,Info} from 'lucide-react';
 
 type Frame={label:string;code:string;group:string;tv:boolean};
 const frames:Frame[]=[
- ...['2','3','5','10','15','30','45'].map(s=>({label:s+' minutos',code:s,group:'MINUTOS',tv:true})),
- ...['60','120','180','240'].map((s,i)=>({label:(i+1)+' hora'+(i?'s':''),code:s,group:'HORAS',tv:true})),
- {label:'1 día',code:'1D',group:'DÍAS',tv:false},{label:'1 semana',code:'1W',group:'DÍAS',tv:false},
- {label:'1 mes',code:'1M',group:'MESES',tv:false},{label:'3 meses',code:'3M',group:'MESES',tv:false},
- {label:'6 meses',code:'6M',group:'MESES',tv:false},{label:'12 meses',code:'12M',group:'MESES',tv:false}
+ {label:'1D',code:'1D',group:'HISTÓRICO',tv:false},
+ {label:'1W',code:'1W',group:'HISTÓRICO',tv:false},
+ {label:'1M',code:'1M',group:'HISTÓRICO',tv:false},
+ ...['2','3','5','10','15','30','45'].map(s=>({label:s+' min',code:s,group:'INTRADÍA',tv:true})),
+ ...['60','120','180','240'].map((s,i)=>({label:(i+1)+' h',code:s,group:'INTRADÍA',tv:true}))
 ];
 function timeframeKey(date:string,code:string){
  const d=new Date(date+'T12:00:00Z'),year=d.getUTCFullYear(),month=d.getUTCMonth();
@@ -41,6 +41,8 @@ function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:
  else if(range==='3M')cutoff.setUTCMonth(cutoff.getUTCMonth()-3);
  else if(range==='6M')cutoff.setUTCMonth(cutoff.getUTCMonth()-6);
  else if(range==='1A')cutoff.setUTCFullYear(cutoff.getUTCFullYear()-1);
+ else if(range==='3A')cutoff.setUTCFullYear(cutoff.getUTCFullYear()-3);
+ else if(range==='5A')cutoff.setUTCFullYear(cutoff.getUTCFullYear()-5);
  const firstVisible=range==='MAX'?0:Math.max(0,all.findIndex(c=>new Date(c.d+'T12:00:00Z')>=cutoff));
  const data=all.slice(firstVisible),v=all.map(x=>x.c);
  const visibleCount=data.length;
@@ -103,17 +105,19 @@ function TradingViewChart({symbol,code}:{symbol:string;code:string}){
  return <div className="intraday-chart"><div ref={ref} className="tradingview-widget-container"/><div className="data-external"><Info size={14}/> Cotizaciones y disponibilidad de intervalos gestionadas por TradingView. Algunos marcos exigen iniciar sesión o una suscripción del proveedor. <a href="https://www.tradingview.com/" target="_blank" rel="noopener noreferrer">Abrir TradingView <ExternalLink size={13}/></a></div></div>;
 }
 export default function PriceChart({candles,ticker}:{candles:Candle[];ticker:string}){
- const [frame,setFrame]=useState<Frame>(frames[11]);
+ const [frame,setFrame]=useState<Frame>(frames[0]);
  const [open,setOpen]=useState(false);
  const [range,setRange]=useState('1A');
- useEffect(()=>{setFrame(frames[11]);setRange('1A');setOpen(false)},[ticker]);
+ useEffect(()=>{setFrame(frames[0]);setRange('1A');setOpen(false)},[ticker]);
  return <div className="chart-terminal">
-  <div className="terminal-toolbar"><div className="time-selector"><button className="time-trigger" aria-expanded={open} aria-haspopup="listbox" onClick={()=>setOpen(v=>!v)}>{frame.label}<ChevronDown size={16}/></button>
-   {open&&<div className="time-menu" role="listbox" aria-label="Intervalos de tiempo">{['MINUTOS','HORAS','DÍAS','MESES'].map(group=><div key={group}><span className="time-group">{group}</span>{frames.filter(f=>f.group===group).map(f=><button type="button" role="option" aria-selected={frame.code===f.code} key={f.code} className={frame.code===f.code?'is-selected':''} onClick={()=>{setFrame(f);setOpen(false)}}>{f.label}{f.tv&&<small>TV</small>}</button>)}</div>)}</div>}
-  </div>
-  {!frame.tv&&<div className="range-selector" aria-label="Período visible">{['1M','3M','6M','1A','MAX'].map(v=><button key={v} className={range===v?'active':''} onClick={()=>setRange(v)}>{v}</button>)}</div>}
-  <span className="terminal-source">{frame.tv?'INTRADÍA · TRADINGVIEW':'HISTÓRICOS DIARIOS · YAHOO'}</span>
+  <div className="terminal-toolbar simple-chart-toolbar">
+   <div className="simple-time-group"><span>Vela</span>{frames.filter(f=>!f.tv).map(f=><button key={f.code} type="button" className={frame.code===f.code?'active':''} onClick={()=>{setFrame(f);setOpen(false)}}>{f.label}</button>)}
+    <div className="time-selector"><button className={'time-trigger '+(frame.tv?'is-tv':'')} aria-expanded={open} aria-haspopup="listbox" onClick={()=>setOpen(v=>!v)}>{frame.tv?frame.label:'Intradía'}<ChevronDown size={13}/></button>
+     {open&&<div className="time-menu" role="listbox" aria-label="Velas intradía"><span className="time-group">DATOS DE TRADINGVIEW</span>{frames.filter(f=>f.tv).map(f=><button type="button" role="option" aria-selected={frame.code===f.code} className={frame.code===f.code?'is-selected':''} key={f.code} onClick={()=>{setFrame(f);setOpen(false)}}>{f.label}</button>)}</div>}
+    </div>
+   </div>
+   {!frame.tv&&<div className="simple-time-group simple-range-group" aria-label="Período visible"><span>Ver</span>{['1M','3M','6M','1A','3A','5A','MAX'].map(v=><button key={v} type="button" className={range===v?'active':''} onClick={()=>setRange(v)}>{v}</button>)}</div>}
   </div>
   {frame.tv?<TradingViewChart symbol={ticker} code={frame.code}/>:<NativeChart candles={candles} frame={frame.code} range={range}/>}
- </div>
+ </div>;
 }
