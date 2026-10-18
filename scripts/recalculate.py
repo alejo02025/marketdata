@@ -10,7 +10,7 @@ def main():
         candles=item['candles'];item['signal']=calculate(candles,spy)
         history=[];previous=set()
         for idx in range(max(219,len(candles)-125),len(candles)):
-            result=calculate(candles[:idx+1]);current=set()
+            result=calculate(candles[:idx+1], [x for x in spy if x['d']<=candles[idx]['d']]);current=set()
             for e in result.get('setups',[]):
                 key=(e['code'],e['stage']);current.add(key)
                 if key in previous:continue
@@ -19,6 +19,6 @@ def main():
         item['recentSignals']=history[-24:];item['lastHistoricalSignal']=history[-1] if history else None
         item['backtest']=backtest(candles,spy)
         print(ticker,[(k,v['full']['trades']) for k,v in item['backtest']['strategies'].items()],flush=True)
-    data['researchVersion']='audit-v2'
+    data['researchVersion']='trend-strength-v3'
     OUT.write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
 if __name__=='__main__':main()
