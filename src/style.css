@@ -415,3 +415,22 @@ body{background:#090d15}
 .simple-active-strategies{grid-template-columns:1fr}
 .simple-analysis-signal{padding:0 10px}
 }
+
+/* Compact chart interval controls */
+.simple-chart-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 13px;min-height:54px}
+.simple-time-group{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.simple-time-group>span{margin:0 9px 0 0;color:#8196b1;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.simple-time-group>button{background:transparent;border:0;color:#8297b4;padding:8px 11px;border-radius:6px;font-size:11px;font-weight:750}
+.simple-time-group>button.active{color:#f2f6fe;background:#344f78}
+.simple-time-group>button:hover{color:#fff;background:#263b59}
+.simple-chart-toolbar .time-trigger{min-width:0;gap:7px;padding:8px 10px;background:transparent;border-color:#283950;color:#8297b4}
+.simple-chart-toolbar .time-trigger.is-tv{background:#263d60;color:#fff}
+.simple-chart-toolbar .time-menu{min-width:140px;width:170px}
+@media(max-width:750px){
+.simple-chart-toolbar{align-items:flex-start;flex-direction:column;gap:8px}
+.simple-time-group{width:100%;gap:2px}
+.simple-time-group>span{margin-right:10px;min-width:28px}
+.simple-time-group>button{padding:7px 8px;font-size:10px}
+.simple-chart-toolbar .time-trigger{padding:7px}
+.simple-range-group{border-top:1px solid #26364b;padding-top:9px}
+}
