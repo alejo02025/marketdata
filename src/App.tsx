@@ -192,15 +192,15 @@ export default function App(){
    </div>
    <section className="chart-card"><Suspense fallback={<div className="chart-message">Cargando gráfico…</div>}><PriceChart ticker={ticker} candles={current.candles}/></Suspense></section>
    <div className="simple-indicators">
-    <div><span>EMA 20</span><strong>{money(current.signal.ema20,current.currency)}</strong></div>
-    <div><span>SMA 200</span><strong>{money(current.signal.sma200,current.currency)}</strong></div>
-    <div><span>RSI</span><strong>{current.signal.rsi14?.toFixed(1)||'—'}</strong></div>
-    <div><span>Volumen relativo</span><strong>{current.signal.relativeVolume?.toFixed(2)||'—'}x</strong></div>
+    <div><span>Fortaleza vs SPY · 63 ruedas</span><strong className={(current.signal.decision?.relativeStrength63||0)>=0?'up':'down'}>{percentage(current.signal.decision?.relativeStrength63,true)}</strong></div>
+    <div><span>Distancia SMA 200</span><strong>{percentage(current.signal.distanceSma200,true)}</strong></div>
+    <div><span>Volumen relativo</span><strong>{current.signal.relativeVolume?.toFixed(2)??'—'}x</strong></div>
+    <div><span>Volatilidad ATR diario</span><strong>{percentage(current.signal.decision?.atrPct)}</strong></div>
    </div>
    <div className="simple-analysis-signal">
-    <div className="simple-section-title"><div><span className="mini-label">SEÑAL TÉCNICA</span><h2>¿Qué está pasando?</h2></div><span className={'simple-status '+(current.signal.setups?.[0]?.stage==='Alerta temprana'?'early':statusColor(current.signal.status))}>{assetStatus(current)}</span></div>
-    {current.signal.setups?.length?<div className="simple-active-strategies">{current.signal.setups.map(x=><div className="simple-strategy" key={x.code}><span>{strategyTitle(x.code)}</span><strong>{stageShort(x.stage)}</strong></div>)}</div>:<div className="simple-standby">Sin evento activo en el último cierre.</div>}
-    <details className="simple-disclosure"><summary>Ver explicación y condiciones de riesgo</summary><p>{current.signal.reason}</p>{current.signal.setups?.map(x=><div key={x.code}><b>{x.label} — {x.stage}</b><p>{x.reason}</p><p><b>Invalidación:</b> {x.invalidation}</p></div>)}<p>Señales técnicas experimentales; no aseguran rentabilidad. Los datos son del último cierre.</p></details>
+    <div className="simple-section-title"><div><span className="mini-label">SEÑAL TÉCNICA</span><h2>Diagnóstico del activo</h2></div><span className={'simple-status '+(current.signal.setups?.[0]?.stage==='Alerta temprana'?'early':statusColor(current.signal.status))}>{assetStatus(current)}</span></div>
+    {current.signal.setups?.length?<div className="simple-active-strategies">{current.signal.setups.map(x=><div className="simple-strategy" key={x.code}><span>{strategyTitle(x.code)}</span><strong>{stageShort(x.stage)}</strong></div>)}</div>:<div className="simple-standby">Sin señal confirmada en el último cierre. Revisá la lectura y la tendencia.</div>}
+    <details className="simple-disclosure"><summary>Ver explicación y condiciones de riesgo</summary><p>{current.signal.reason}</p>{current.signal.setups?.map(x=><div key={x.code}><b>{x.label} — {x.stage}</b><p>{x.reason}</p><p><b>Invalidación:</b> {x.invalidation}</p></div>)}<p>Investigación técnica experimental, sin probabilidades calibradas. El histórico no garantiza resultados futuros.</p></details>
    </div>
    <details className="simple-disclosure advanced-report"><summary>Indicadores avanzados, contexto y backtesting</summary>
     <div className="advanced-inner">
