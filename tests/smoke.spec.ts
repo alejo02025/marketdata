@@ -6,12 +6,18 @@ for(const width of [1440,390]){
   await page.goto('/');
   await expect(page.getByRole('heading',{name:/Panel de acciones/})).toBeVisible();
   await expect(page.locator('.board-stock')).toHaveCount(18);
+  await expect(page.locator('.board-focus-pane .ma-reading')).toHaveCount(3);
+  await expect(page.locator('.board-focus-pane .ma-three-grid')).toContainText('EMA 20');
+  await expect(page.locator('.board-focus-pane .ma-three-grid')).toContainText('SMA 50');
+  await expect(page.locator('.board-focus-pane .ma-three-grid')).toContainText('SMA 200');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/radar-${width}.png`,fullPage:true});
   await page.locator('.board-stock').filter({hasText:'GOOGL'}).first().click();
   await expect(page.locator('.board-focus-identity h3')).toHaveText('GOOGL');
   await page.getByRole('button',{name:'Análisis',exact:true}).click();
   await expect(page.locator('.financial-chart canvas').first()).toBeVisible();
+  await expect(page.locator('.ma-analysis-title')).toBeVisible();
+  await expect(page.locator('.ma-analysis-title+.ma-three-grid .ma-reading')).toHaveCount(3);
   for(const frame of ['1W','1M','1D']){
    await page.locator('.simple-time-group').first().getByRole('button',{name:frame,exact:true}).click();
    await expect(page.getByRole('img',{name:new RegExp('Velas '+frame)})).toBeVisible();
