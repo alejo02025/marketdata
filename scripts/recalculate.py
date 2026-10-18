@@ -12,13 +12,13 @@ def main():
         for idx in range(max(219,len(candles)-125),len(candles)):
             result=calculate(candles[:idx+1], [x for x in spy if x['d']<=candles[idx]['d']]);current=set()
             for e in result.get('setups',[]):
-                key=(e['code'],e['stage']);current.add(key)
+                key=(e['code'],e['label'],e['stage']);current.add(key)
                 if key in previous:continue
                 history.append({'date':candles[idx]['d'],'price':candles[idx]['c'],'status':result['status'],'score':result['score'],'reason':e['reason'],'setupCode':e['code'],'setupLabel':e['label'],'stage':e['stage']})
             previous=current
         item['recentSignals']=history[-24:];item['lastHistoricalSignal']=history[-1] if history else None
         item['backtest']=backtest(candles,spy)
         print(ticker,[(k,v['full']['trades']) for k,v in item['backtest']['strategies'].items()],flush=True)
-    data['researchVersion']='trend-strength-v3'
+    data['researchVersion']='three-averages-v4'
     OUT.write_text(json.dumps(data,ensure_ascii=False,separators=(',',':')))
 if __name__=='__main__':main()
