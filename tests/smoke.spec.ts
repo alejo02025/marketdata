@@ -10,7 +10,6 @@ for(const width of [1440,390]){
   await page.screenshot({path:`test-results/radar-${width}.png`,fullPage:true});
   await page.locator('.board-stock').filter({hasText:'GOOGL'}).first().click();
   await expect(page.locator('.board-focus-identity h3')).toHaveText('GOOGL');
-  if(width<650)await page.getByRole('button',{name:'Menú'}).click();
   await page.getByRole('button',{name:'Análisis',exact:true}).click();
   await expect(page.locator('.financial-chart canvas').first()).toBeVisible();
   for(const frame of ['1W','1M','1D']){
@@ -25,7 +24,6 @@ for(const width of [1440,390]){
   await expect(page.locator('.simple-asset-quote')).toContainText('JPM');
   await page.screenshot({path:`test-results/analysis-${width}.png`,fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
-  if(width<650)await page.getByRole('button',{name:'Menú'}).click();
   await page.getByRole('button',{name:'Daily',exact:true}).click();
   await expect(page.getByRole('heading',{name:/Market Daily/})).toBeVisible();
   await expect(page.locator('.daily-pending, .daily-article')).toBeVisible();
