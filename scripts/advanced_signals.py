@@ -126,20 +126,22 @@ def calculate(candles,spy=None):
     leading=spy_rel is not None and spy_rel>0
     risk=not m200["above"] and not m200["rising"]
     risk_high=atr_pct is not None and atr_pct>8
-    # A price may be extended even when trend and momentum are strong.
+    # Each of the three averages can independently define an entry watch zone.
     extension=(last-ema20[-1])/atr if atr>0 else 999
-    near_ema=abs(last-ema20[-1])<=1.4*atr
-    near_sma50=abs(last-s50)<=1.2*atr
-    in_zone=(near_ema or near_sma50) and last>=s200 and 38<=r<=70
+    support_codes=[code for code in ("ma20","ma50","ma200")
+                   if moving_averages[code]["near"] and
+                   last>=moving_averages[code]["value"]-.35*atr]
+    touched_codes=[code for code in support_codes if moving_averages[code]["touched"]]
+    recovered_codes=[code for code in touched_codes if moving_averages[code]["recovered"]]
+    focus_code=(recovered_codes or touched_codes or support_codes or ["ma20"])[-1]
+    focus_average=moving_averages[focus_code]
+    in_zone=bool(support_codes) and 38<=r<=70
     bullish_reversal=(c["c"]>c["o"] and c["c"]>v[-2] and r>=pr)
-    # The next-open backtest only acts on confirmed events.
-    pullback_confirmed=(trend and leading and liquid and not risk_high and in_zone
-                        and c["l"]<=ema20[-1]+.2*atr and c["c"]>=ema20[-1]
-                        and bullish_reversal and (rvol or 0)>=.75)
-    breakout=(trend and leading and liquid and not risk_high
-              and last>high55*1.001 and (rvol or 0)>=1.3
-              and extension<=3.5 and 48<=r<=78)
     qualifies=trend and leading and liquid and not risk_high
+    pullback_confirmed=(qualifies and m50["rising"] and bool(recovered_codes)
+                        and in_zone and bullish_reversal and (rvol or 0)>=.75)
+    breakout=(qualifies and intermediate and last>high55*1.001
+              and (rvol or 0)>=1.3 and extension<=3.5 and 48<=r<=78)
     candidate=qualifies and in_zone and not pullback_confirmed
     momentum_63=pct(last,v[-64])
 
