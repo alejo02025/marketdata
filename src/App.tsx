@@ -14,14 +14,34 @@ const order:Record<string,number>={'Oportunidad de Entrada':0,'Ruptura Confirmad
 const finviz=(t:string)=>'https://finviz.com/quote.ashx?t='+encodeURIComponent(t.replace('.','-'));
 const yahoo=(t:string)=>'https://finance.yahoo.com/quote/'+encodeURIComponent(t.replace('.','-'));
 function shortStatus(status:string){return status==='Oportunidad de Entrada'?'Posible entrada':status==='Ruptura Confirmada'?'Ruptura':status==='En Seguimiento / Precaución'?'En seguimiento':status==='Riesgo Creciente / Deterioro'?'Precaución':'Sin señal'}
-function strategyTitle(code:string){return code==='ema20_touch'?'Toque EMA 20':code==='golden_cross'?'Golden Cross':code==='breakout'?'Ruptura de máximos':'Señal técnica'}
-function stageShort(stage:string){return stage==='Rebote confirmado'?'Rebote confirmado':stage==='Alerta temprana'?'Alerta temprana':stage==='Confirmación de tendencia'?'Tendencia confirmada':stage==='Ruptura confirmada'?'Ruptura confirmada':'Histórica'}
-function assetStatus(a:Asset){return a.signal.setups?.length?stageShort(a.signal.setups[0].stage):shortStatus(a.signal.status)}
+function strategyTitle(code:string){return code==='trend_pullback'?'Recuperación de tendencia':code==='trend_breakout'?'Ruptura con fortaleza':code==='ema20_touch'?'Toque EMA 20':code==='golden_cross'?'Golden Cross':code==='breakout'?'Ruptura de máximos':'Señal técnica'}
+function stageShort(stage:string){return stage==='Confirmación'?'Confirmada':stage==='Observación'?'En estudio':stage==='Rebote confirmado'?'Rebote confirmado':stage==='Alerta temprana'?'Alerta temprana':stage==='Confirmación de tendencia'?'Tendencia confirmada':stage==='Ruptura confirmada'?'Ruptura confirmada':'Histórica'}
+function assetStatus(a:Asset){return a.signal.decision?.state||shortStatus(a.signal.status)}
 function displayDate(date:string){const d=new Date(date+'T12:00:00Z');return Number.isNaN(d.getTime())?date:d.toLocaleDateString('es-AR',{timeZone:'UTC',day:'2-digit',month:'short'})}
 function Status({name}:{name:string}){return <span className={'status-chip '+statusColor(name)}><span className="status-dot"/>{name}</span>}
 function LinkOut({href,children}:{href:string;children:React.ReactNode}){return <a href={href} target="_blank" rel="noopener noreferrer">{children}<ExternalLink size={13}/></a>}
 function MetaMetric({label,value,detail,variant}:{label:string;value:string;detail?:string;variant?:string}){return <div className="market-metric"><span>{label}</span><strong className={variant||''}>{value}</strong>{detail&&<small>{detail}</small>}</div>}
 function PulseBackdrop(){return <div className="ambient-market" aria-hidden="true"><div className="aurora glow-a"/><div className="aurora glow-b"/><div className="grid-glow"/><div className="market-wave wave-one"/><div className="market-wave wave-two"/></div>}
+function focusTone(state:string){return state.includes('Entrada')||state.includes('Ruptura')?'entry':state.includes('Cerca')?'near':state.includes('Riesgo')||state.includes('Volatilidad')?'risk':state.includes('Tendencia')?'trend':'quiet'}
+function Sparkline({asset}:{asset:Asset}){
+ const rows=asset.candles.slice(-105);
+ if(rows.length<2)return <div className="board-chart-empty">No hay histórico suficiente</div>;
+ const values=rows.map(c=>c.c),lo=Math.min(...values)*.985,hi=Math.max(...values)*1.015;
+ const X=(i:number)=>24+i*672/(rows.length-1),Y=(v:number)=>190-(v-lo)/(hi-lo)*157;
+ const d=values.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+ const first=rows[0],last=rows[rows.length-1],positive=last.c>=first.c;
+ const area=d+' L696 210 L24 210 Z';
+ return <div className="board-spark">
+  <div className="board-spark-title"><span>EVOLUCIÓN · ÚLTIMAS 105 RUEDAS</span><span className={positive?'up':'down'}>{percentage((last.c/first.c-1)*100,true)}</span></div>
+  <svg viewBox="0 0 720 229" role="img" aria-label={'Evolución histórica de '+asset.ticker+' entre '+first.d+' y '+last.d} preserveAspectRatio="none">
+   <defs><linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={positive?'#42dbb0':'#ff8f9a'} stopOpacity=".24"/><stop offset="1" stopColor={positive?'#42dbb0':'#ff8f9a'} stopOpacity="0"/></linearGradient></defs>
+   {[.2,.5,.8].map(n=><line key={n} x1="24" x2="696" y1={25+n*180} y2={25+n*180} stroke="#2d3d54" strokeDasharray="3 7"/> )}
+   <path d={area} fill="url(#spark-fill)"/><path d={d} fill="none" stroke={positive?'#55ddbd':'#fa8798'} strokeWidth="3" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>
+   <circle cx={X(values.length-1)} cy={Y(last.c)} r="5" fill={positive?'#55ddbd':'#fa8798'}/>
+  </svg>
+  <div className="board-spark-dates"><span>{displayDate(first.d)}</span><span>{displayDate(last.d)}</span></div>
+ </div>
+}
 function RatingGroup({title,tone,items}:{title:string;tone:string;items:string[]}){return <section className={'signal-points '+tone}><div className="points-title"><span className="point-icon"/>{title}<strong>{items.length}</strong></div>{items.length?<ul>{items.map((x,i)=><li key={i}>{x}</li>)}</ul>:<p className="unavailable">Sin observaciones concluyentes.</p>}</section>}
 function BacktestPanel({asset}:{asset:Asset}){
  const bt=asset.backtest;
@@ -29,7 +49,7 @@ function BacktestPanel({asset}:{asset:Asset}){
  return <section className="backtest-panel"><h3>Pruebas históricas por estrategia</h3>
  {bt?.strategies?<><p className="panel-note">{bt.period.from} — {bt.period.to}. Costo por lado: {bt.feeAndSlippagePerSidePct}%. Resultados exploratorios, sin validación independiente.</p>
  {Object.entries(bt.strategies).map(([code,r])=><details className="simple-disclosure" key={code}><summary>{strategyTitle(code)} · {r.full?.trades||0} operaciones</summary><div className="chart-data-scroll"><table className="simple-table"><thead><tr><th>Período</th><th>Retorno</th><th>Buy & hold</th><th>SPY</th><th>Win rate</th><th>Drawdown</th><th>Trades</th></tr></thead><tbody>{[['Completo',r.full],['Primer 60%',r.early],['Último 40%*',r.outOfSample],['Costo 0,50%/lado',r.higherCost]].map(([label,value])=>{const m=value as typeof r.full;return <tr key={label as string}><td>{label as string}</td><td>{fmt(m?.totalReturnPct)}</td><td>{fmt(m?.buyHoldReturnPct)}</td><td>{fmt(m?.spyReturnPct)}</td><td>{fmt(m?.winRate)}</td><td>{fmt(m?.maxDrawdownPct)}</td><td>{m?.trades??'—'}</td></tr>})}</tbody></table><p>* Segmento retrospectivo; no equivale a resultados fuera de muestra independientes. Menos de 10 operaciones: evidencia insuficiente.</p></div></details>)}
- <details className="backtest-method"><summary>Método, fuentes y limitaciones</summary><p>{bt.method}</p><ul>{bt.warnings.map(w=><li key={w}>{w}</li>)}</ul><p><LinkOut href="https://www.tradingview.com/pine-script-docs/concepts/strategies/">Metodología de simulación</LinkOut> · <LinkOut href="https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf">Investigación sobre seguimiento de tendencia</LinkOut></p><p>La evidencia sobre seguimiento de tendencia no valida estas reglas particulares de EMA 20, Golden Cross o ruptura.</p></details></>:<p>Sin prueba por estrategia disponible. No se muestran resultados del motor anterior.</p>}
+ <details className="backtest-method"><summary>Método, fuentes y limitaciones</summary><p>{bt.method}</p><ul>{bt.warnings.map(w=><li key={w}>{w}</li>)}</ul><p><LinkOut href="https://www.tradingview.com/pine-script-docs/concepts/strategies/">Metodología de simulación</LinkOut> · <LinkOut href="https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf">Investigación sobre seguimiento de tendencia</LinkOut></p><p>La evidencia sobre seguimiento de tendencia no valida automáticamente las reglas específicas del detector.</p></details></>:<p>Sin prueba por estrategia disponible. No se muestran resultados del motor anterior.</p>}
  </section>
 }
 
@@ -41,8 +61,7 @@ export default function App(){
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  const [query,setQuery]=useState('');
- const [sort,setSort]=useState('Señal');
- const [filter,setFilter]=useState('Todos');
+ const [filter,setFilter]=useState('Todas');
  const [watch,setWatch]=useState<string[]>(()=>{const data=readLocal<string[]>('market-radar-watch-v1',tickers);return Array.isArray(data)?data.filter((x):x is string=>typeof x==='string'&&validTicker(x)).slice(0,100):tickers});
  const [newTicker,setNewTicker]=useState('');
  const [toast,setToast]=useState('');
@@ -72,26 +91,29 @@ export default function App(){
  const runDate=latestSession?displayDate(latestSession):null;
  const changedSince=snapshot?.generatedAt?Math.max(0,(Date.now()-new Date(snapshot.generatedAt).getTime())/3600000):null;
  const aged=changedSince!=null&&changedSince>40;
- const results=useMemo(()=>{
-  let list=watch.filter(t=>t.toLowerCase().includes(query.toLowerCase())||(assets[t]?.company||'').toLowerCase().includes(query.toLowerCase()));
-  if(filter!=='Todos')list=list.filter(t=>assets[t]?.signal.status===filter);
-  if(sort==='Señal')list.sort((a,b)=>(order[assets[a]?.signal.status]??9)-(order[assets[b]?.signal.status]??9)||((assets[b]?.signal.score??-1)-(assets[a]?.signal.score??-1)));
-  if(sort==='Score')list.sort((a,b)=>(assets[b]?.signal.score??-1)-(assets[a]?.signal.score??-1));
-  if(sort==='RVOL')list.sort((a,b)=>(assets[b]?.signal.relativeVolume??-1)-(assets[a]?.signal.relativeVolume??-1));
-  if(sort==='RSI')list.sort((a,b)=>(assets[b]?.signal.rsi14??-1)-(assets[a]?.signal.rsi14??-1));
-  if(sort==='52W')list.sort((a,b)=>(assets[b]?.signal.distance52High??-999)-(assets[a]?.signal.distance52High??-999));
-  if(sort==='Ticker')list.sort();
-  return list;
- },[watch,query,filter,sort,snapshot]);
- const opportunities=watch.filter(t=>['Oportunidad de Entrada','Ruptura Confirmada'].includes(assets[t]?.signal.status)||(assets[t]?.signal.setups||[]).some(x=>x.code==='golden_cross'));
+ const boardStocks=useMemo(()=>{
+  const list=watch.filter(t=>t.toLowerCase().includes(query.trim().toLowerCase())||(assets[t]?.company||'').toLowerCase().includes(query.trim().toLowerCase()));
+  const keep=(t:string)=>{const state=assets[t]?.signal.decision?.state||'Sin señal';
+   if(filter==='Entradas')return state==='Entrada a estudiar'||state==='Ruptura a estudiar';
+   if(filter==='Cerca')return state==='Cerca de entrada';
+   if(filter==='Tendencia')return state==='Tendencia fuerte'||state==='Muy extendida';
+   if(filter==='Riesgo')return state==='Riesgo elevado'||state==='Volatilidad alta';
+   return true;
+  };
+  return list.filter(keep).sort((a,b)=>(assets[b]?.signal.decision?.priority??-1)-(assets[a]?.signal.decision?.priority??-1)||a.localeCompare(b));
+ },[snapshot,watch,query,filter]);
+ const focusAsset=assets[ticker]||boardStocks.map(t=>assets[t]).find(Boolean);
+ const focusTicker=focusAsset?.ticker||ticker;
+ const assetsCovered=watch.filter(t=>!!assets[t]);
+ const entriesCount=assetsCovered.filter(t=>['Entrada a estudiar','Ruptura a estudiar'].includes(assets[t].signal.decision?.state||'')).length;
+ const nearCount=assetsCovered.filter(t=>assets[t].signal.decision?.state==='Cerca de entrada').length;
+ const trendCount=assetsCovered.filter(t=>assets[t].signal.decision?.state==='Tendencia fuerte').length;
+ const riskCount=assetsCovered.filter(t=>['Riesgo elevado','Volatilidad alta'].includes(assets[t].signal.decision?.state||'')).length;
  const signalEvents=useMemo(()=>{
-  const rows=watch.flatMap(t=>(assets[t]?.recentSignals||[]).filter(h=>h.date!==latestSession).map(h=>({...h,ticker:t,lastSession:assets[t].lastSession,currency:assets[t].currency}))).sort((a,b)=>b.date.localeCompare(a.date)||b.score-a.score);
+  const rows=watch.flatMap(t=>(assets[t]?.recentSignals||[]).map(h=>({...h,ticker:t,currency:assets[t].currency,lastSession:assets[t].lastSession}))).sort((a,b)=>b.date.localeCompare(a.date)||(b.score??0)-(a.score??0));
   const seen=new Set<string>();
-  return rows.filter(h=>{const key=h.ticker+'|'+(h.setupCode||h.status);if(seen.has(key))return false;seen.add(key);return true}).slice(0,9);
+  return rows.filter(h=>{const key=h.ticker+'|'+(h.setupCode||h.status);if(seen.has(key))return false;seen.add(key);return true}).slice(0,8);
  },[snapshot,watch]);
- const todayEvents=watch.filter(t=>assets[t]?.lastSession===latestSession).flatMap(t=>(assets[t]?.signal.setups||[]).map(h=>({...h,ticker:t,date:assets[t].lastSession,price:assets[t].price,currency:assets[t].currency}))).sort((a,b)=>Number(a.stage==='Alerta temprana')-Number(b.stage==='Alerta temprana'));
- const risks=watch.filter(t=>assets[t]?.signal.status==='Riesgo Creciente / Deterioro');
- const pending=watch.filter(t=>assets[t]?.signal.status==='En Seguimiento / Precaución');
  function go(which:Page){setPage(which);setNavOpen(false);setToast('')}
  function analyze(t:string){setTicker(t);go('analysis')}
  function addTicker(e:React.FormEvent){e.preventDefault();const s=newTicker.trim().toUpperCase();if(!validTicker(s)){setToast('El ticker no es válido.');return}setWatch(w=>Array.from(new Set([s,...w])));setNewTicker('');setToast('Ticker agregado. Aparecerá sin cobertura hasta el próximo refresh autorizado.')}
