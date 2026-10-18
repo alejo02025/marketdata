@@ -189,11 +189,11 @@ export default function App(){
   <div className="board-section-intro board-history-header"><div><span className="board-overline">OPPORTUNITY LOG / VERIFIED</span><h2>Últimas señales registradas</h2></div><span>Visibles con el mercado cerrado</span></div>
   <div className="board-history">
    {signalEvents.length?signalEvents.map((h,i)=><button type="button" className="board-history-row" key={h.ticker+h.date+(h.setupCode||'')+i} onClick={()=>analyze(h.ticker)}>
-    <span className="board-history-date">{displayDate(h.date)}</span><b>{h.ticker}</b><span className="board-history-signal">{strategyTitle(h.setupCode||'')}</span><span className="board-history-stage">{stageShort(h.stage||'')}</span><span className="board-history-price">{money(h.price,h.currency)}</span><ChevronRight size={15}/>
+    <span className="board-history-date">{displayDate(h.date)}</span><b>{h.ticker}</b><span className="board-history-signal">{h.setupLabel||strategyTitle(h.setupCode||'')}</span><span className="board-history-stage">{stageShort(h.stage||'')}</span><span className="board-history-price">{money(h.price,h.currency)}</span><ChevronRight size={15}/>
    </button>):<div className="board-history-empty">Todavía no hay eventos verificables dentro de las últimas 125 ruedas. El panel de acciones sigue disponible.</div>}
   </div>
   <details className="board-method"><summary>¿Cómo decide el Radar? <ChevronDown size={15}/></summary>
-   <p>Primero busca una tendencia principal alcista y compara la fuerza relativa frente a SPY. Después exige liquidez suficiente, controla la volatilidad y distingue entre recuperación desde soporte y ruptura de máximos con volumen. Los activos sin señal se mantienen visibles.</p>
+   <p>Analiza tres medias por separado: EMA 20 (corto plazo), SMA 50 (mediano plazo) y SMA 200 (largo plazo). En cada una evalúa precio, dirección, distancia y posibles rebotes. No exige el cruce de 50 y 200. Además contrasta fuerza relativa frente a SPY, liquidez, volatilidad y rupturas. Los activos sin señal siguen visibles.</p>
    <p><b>Estados:</b> «Entrada a estudiar» y «Ruptura a estudiar» son hipótesis técnicas, no órdenes de compra. «Cerca de entrada» requiere confirmación. El nivel de invalidación es una referencia calculada mediante soporte y ATR, no un stop recomendado.</p>
    <p>Metodología experimental. Se muestran datos al cierre; prioridad técnica no equivale a probabilidad de rentabilidad. <LinkOut href="https://finance.yahoo.com/">Fuente de precios</LinkOut>.</p>
   </details>
