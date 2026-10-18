@@ -183,28 +183,34 @@ def calculate(candles,spy=None):
         next_step="Mantener en observación, sin forzar entradas."
 
     # Priority orders the stock universe; it is NOT a probability of rising.
+    # Separate weights for the short, medium and long averages (not a cross-based score).
     priority=min(100,max(0,
-        (35 if trend else 0)+(20 if leading else 0)+(10 if liquid else 0)
-        +(15 if in_zone else 0)+(15 if breakout or pullback_confirmed else 0)
-        +(5 if momentum_63 is not None and momentum_63>0 else 0)
+        (15 if short else 0)+(15 if intermediate else 0)+(20 if trend else 0)
+        +(15 if leading else 0)+(10 if liquid else 0)
+        +(15 if in_zone else 0)+(10 if breakout or pullback_confirmed else 0)
         -(20 if risk else 0)-(10 if risk_high else 0)))
-    support=min(ema20[-1],s50)
+    support=focus_average["value"]
     invalidation_price=support-1.5*atr
     setups=[]
     if candidate or pullback_confirmed:
-        setups.append({"code":"trend_pullback","label":"Continuación tras retroceso",
+        setups.append({"code":"trend_pullback","label":"Reacción en "+focus_average["label"],
                        "stage":"Confirmación" if pullback_confirmed else "Observación",
-                       "reason":"Tendencia y fuerza relativa positivas. "+(
-                           "Cierre de recuperación en zona de soporte." if pullback_confirmed
-                           else "Precio en zona de interés, pero sin confirmación."),
-                       "invalidation":"Zona de invalidez orientativa: "+str(round(invalidation_price,2))+" USD; no es un stop recomendado."})
+                       "reason":focus_average["label"]+": "+(
+                           "toque y recuperación al cierre en tendencia favorable." if pullback_confirmed
+                           else "zona cercana; todavía falta confirmar el rebote."),
+                       "invalidation":"Referencia orientativa bajo "+focus_average["label"]+": "+
+                           str(round(invalidation_price,2))+" USD; no es un stop recomendado."})
     if breakout:
         setups.append({"code":"trend_breakout","label":"Ruptura con fortaleza relativa",
                        "stage":"Confirmación",
                        "reason":"Máximo de 55 ruedas superado, con volumen relativo y tendencia.",
                        "invalidation":"Una vuelta bajo "+str(round(high55,2))+" USD debilita la ruptura."})
     bullish=[];bearish=[];neutral=[]
-    (bullish if trend else bearish).append("Tendencia principal "+("positiva." if trend else "sin confirmación alcista."))
+    for ma in (m20,m50,m200):
+        bucket=bullish if ma["above"] and ma["rising"] else bearish if not ma["above"] and not ma["rising"] else neutral
+        bucket.append(ma["label"]+": "+ma["reading"]+"; distancia "+f"{ma['distancePct']:+.1f}%"+
+                      ("; tocó la media." if ma["touched"] else
+                       "; en zona próxima." if ma["near"] else "; sin contacto en esta vela."))
     (bullish if leading else neutral).append("Fortaleza relativa frente a SPY: "+(f"{spy_rel:+.1f}%." if spy_rel is not None else "sin referencia comprobable."))
     (bullish if liquid else bearish).append("Liquidez promedio a 20 sesiones: USD "+f"{dollar_volume20/1e6:.0f}M.")
     (bullish if r>=pr else neutral).append(f"RSI 14: {r:.1f}.")
