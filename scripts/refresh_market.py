@@ -159,9 +159,14 @@ def main():
         candles=item["candles"]
         for idx in range(max(220,len(candles)-125),len(candles)):
             result=calculate(candles[:idx+1])
-            if result.get("status") in ("Oportunidad de Entrada","Ruptura Confirmada"):
-                history.append({"date":candles[idx]["d"],"price":candles[idx]["c"],"status":result["status"],"score":result["score"],"reason":result["reason"]})
-        item["recentSignals"]=history[-8:]
+            for event in result.get("setups",[]):
+                history.append({
+                    "date":candles[idx]["d"],"price":candles[idx]["c"],
+                    "status":result["status"],"score":result["score"],
+                    "reason":event["reason"],"setupCode":event["code"],
+                    "setupLabel":event["label"],"stage":event["stage"]
+                })
+        item["recentSignals"]=history[-12:]
         item["lastHistoricalSignal"]=history[-1] if history else None
         # Reproducible fixed-rule research, not a validated trading recommendation.
         if ticker in ("SPY","QQQ","AAPL","MSFT","NVDA","GOOGL"):
