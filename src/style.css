@@ -239,3 +239,18 @@ a{color:inherit;text-decoration:none}
 .history-card small{font-size:10px;color:#d4b88e}
 @media(max-width:1100px){.history-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.history-grid{grid-template-columns:1fr}}
+
+/* Clear strategy labels: alerts are not executed buy orders. */
+.strategy-eyebrow{display:block;color:#a5c7f6;font-size:10px;letter-spacing:.02em;font-weight:700;margin:10px 0 2px;line-height:1.5}
+.strategy-help{border:1px solid #344664;border-radius:12px;background:#111f36;padding:13px 18px;margin:0 0 29px;color:#c2d0e8}
+.strategy-help summary{font-weight:700;font-size:12px;cursor:pointer}
+.strategy-help p{font-size:12px;line-height:1.8;margin:14px 0 0}
+.strategy-tag{display:inline-block;border:1px solid #40638b;border-radius:6px;color:#e5eeff;background:#213651;padding:5px 8px;font-weight:750;font-size:11px;margin-bottom:6px}
+.history-stage{display:block;font-size:10px;font-weight:650;color:#77d9b3}
+.strategy-readout{margin:17px 0;padding:15px 17px;background:#101e31;border:1px solid #314663;border-radius:10px}
+.strategy-readout>strong{display:block;color:#dce8fa;font-size:12px;margin-bottom:10px}
+.strategy-line{padding:12px 0;border-top:1px solid #2d405d}
+.strategy-line b{font-size:12px;color:#e8f0ff}
+.strategy-line small{margin-left:10px;color:#6fdfb0}
+.strategy-line p{font-size:11px;color:#aab9d0;line-height:1.65}
+.strategy-line span{font-size:10px;color:#e2c6a2}
