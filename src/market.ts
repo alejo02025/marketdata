@@ -4,7 +4,7 @@ export type Signal = {status:Status;setup?:string;experimental?:boolean;score:nu
 export type Metrics={trades:number;winRate:number|null;profitFactor:number|null;totalReturnPct:number;annualizedReturnPct:number;buyHoldReturnPct:number|null;maxDrawdownPct:number;sharpe:number|null;sortino:number|null;avgTradePct:number|null;evidence:string};
 export type Backtest={period:{from:string;to:string;outOfSampleStart:string};full:Metrics|null;outOfSample:Metrics|null;feeAndSlippagePerSidePct:number;method:string;warnings:string[]};
 export type Daily={schema:number;date:string;title:string;bodyMarkdown:string;status:'published'|'awaiting';generatedAt?:string;sourceLinks?:{title:string;url:string}[]};
-export type Asset = { ticker:string; company:string; currency:string; exchange:string; candles:Candle[]; price:number; changePct:number; lastSession:string; retrievedAt:string; dataStatus:string; source:string; signal:Signal; backtest?:Backtest };
+export type Asset = { ticker:string; company:string; currency:string; exchange:string; candles:Candle[]; price:number; changePct:number; lastSession:string; retrievedAt:string; dataStatus:string; source:string; signal:Signal; backtest?:Backtest; recentSignals?:{date:string;price:number;status:string;score:number;reason:string}[];lastHistoricalSignal?:{date:string;price:number;status:string;score:number;reason:string}|null };
 export type Snapshot = { schema:number; generatedAt:string; provider:string; methodology:string; fetchedCount:number; coverageCount:number; assets:Record<string,Asset> };
 export const tickers=['SPY','QQQ','AAPL','MSFT','GOOGL','AMZN','META','NVDA','AVGO','AMD','TSLA','UBER','NFLX','JPM','V','MA','BRK.B','COST'];
 export const validTicker=(t:string)=>/^[A-Z0-9.^-]{1,16}$/.test(t);
