@@ -31,6 +31,18 @@ class AdvancedTests(unittest.TestCase):
     def test_sudden_decline_is_risk(self):
         s=calculate(rows(crash=True))
         self.assertEqual(s['status'],'Riesgo Creciente / Deterioro')
+    def test_research_decision_is_interpretable_and_causal(self):
+        spy=rows()
+        for bar in spy:bar['c']=bar['o']=100;bar['h']=101;bar['l']=99
+        current=calculate(rows(),spy)
+        self.assertIn(current['decision']['state'],(
+            'Entrada a estudiar','Ruptura a estudiar','Cerca de entrada',
+            'Tendencia fuerte','Muy extendida','Riesgo elevado',
+            'Sin señal','Sin prioridad','Volatilidad alta'))
+        self.assertIn('relativeStrength63',current['decision'])
+        self.assertTrue(0 <= current['decision']['priority'] <= 100)
+        future=rows(481)
+        self.assertEqual(current['decision'],calculate(future[:480],spy)['decision'])
     def test_volume_and_cmf(self):
         self.assertIsNotNone(cmf(rows()))
         s=calculate(rows())
