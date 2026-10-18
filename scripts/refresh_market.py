@@ -153,6 +153,16 @@ def main():
     spy=merged.get("SPY",{}).get("candles")
     for ticker,item in merged.items():
         item["signal"]=calculate(item["candles"], spy if ticker!="SPY" else None)
+        # Preserve the most recent genuine historical setup, even after market close.
+        # Scan only completed sessions and never substitute a historical signal for a current one.
+        history=[]
+        candles=item["candles"]
+        for idx in range(max(220,len(candles)-125),len(candles)):
+            result=calculate(candles[:idx+1])
+            if result.get("status") in ("Oportunidad de Entrada","Ruptura Confirmada"):
+                history.append({"date":candles[idx]["d"],"price":candles[idx]["c"],"status":result["status"],"score":result["score"],"reason":result["reason"]})
+        item["recentSignals"]=history[-8:]
+        item["lastHistoricalSignal"]=history[-1] if history else None
         # Reproducible fixed-rule research, not a validated trading recommendation.
         if ticker in ("SPY","QQQ","AAPL","MSFT","NVDA","GOOGL"):
             item["backtest"]=backtest(item["candles"],spy if ticker!="SPY" else None)
