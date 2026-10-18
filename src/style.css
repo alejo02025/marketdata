@@ -455,3 +455,8 @@ button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visi
 [hidden]{display:none!important}
 @media(max-width:650px){.financial-chart{height:370px}.simple-cards.history{grid-template-columns:1fr}.simple-stage,.simple-status{font-size:10px;white-space:normal}.simple-card-top>strong{font-size:20px}.simple-time-group>button{min-height:40px}.simple-time-group{gap:1px}.chart-topline{padding:10px;font-size:11px}.simple-asset-state{max-width:48%;overflow-wrap:anywhere}.header-tabs{position:static!important;display:flex!important;flex-direction:row!important;width:auto!important;gap:0!important;padding:3px!important}.header-tabs button{font-size:11px;padding:10px 8px}.nav-toggle{display:none}.identity-label{display:none}.nav-inner{gap:8px}.simple-card-foot,.simple-empty span{font-size:12px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* Research tables retain all comparison columns on small screens. */
+.backtest-panel .simple-table{min-width:760px}
+.backtest-panel .simple-table th,.backtest-panel .simple-table td{display:table-cell!important;width:auto!important}
+.simple-status.early{background:#433623;color:#ecc98d}
