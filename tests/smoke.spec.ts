@@ -4,10 +4,13 @@ for(const width of [1440,390]){
   await page.setViewportSize({width,height:900});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading',{name:'Radar',exact:true})).toBeVisible();
-  await expect(page.locator('.simple-table tbody tr')).toHaveCount(18);
+  await expect(page.getByRole('heading',{name:/Panel de acciones/})).toBeVisible();
+  await expect(page.locator('.board-stock')).toHaveCount(18);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:`test-results/radar-${width}.png`,fullPage:true});
+  await page.locator('.board-stock').filter({hasText:'GOOGL'}).first().click();
+  await expect(page.locator('.board-focus-identity h3')).toHaveText('GOOGL');
+  if(width<650)await page.getByRole('button',{name:'Menú'}).click();
   await page.getByRole('button',{name:'Análisis',exact:true}).click();
   await expect(page.locator('.financial-chart canvas').first()).toBeVisible();
   for(const frame of ['1W','1M','1D']){
@@ -22,6 +25,7 @@ for(const width of [1440,390]){
   await expect(page.locator('.simple-asset-quote')).toContainText('JPM');
   await page.screenshot({path:`test-results/analysis-${width}.png`,fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  if(width<650)await page.getByRole('button',{name:'Menú'}).click();
   await page.getByRole('button',{name:'Daily',exact:true}).click();
   await expect(page.getByRole('heading',{name:/Market Daily/})).toBeVisible();
   await expect(page.locator('.daily-pending, .daily-article')).toBeVisible();
@@ -31,11 +35,11 @@ for(const width of [1440,390]){
  });
 }
 test('retains last good snapshot on refresh and reload failure',async({page})=>{
- await page.goto('/');await expect(page.locator('.simple-table tbody tr')).toHaveCount(18);
+ await page.goto('/');await expect(page.locator('.board-stock')).toHaveCount(18);
  await page.route('**/data/market.json*',route=>route.abort());
- await page.getByRole('button',{name:'Actualizar datos'}).first().click();
+ await page.getByRole('button',{name:'Actualizar datos de mercado'}).first().click();
  await expect(page.locator('.source-warning').first()).toBeVisible();
- await expect(page.locator('.simple-table tbody tr')).toHaveCount(18);
- await page.reload();await expect(page.locator('.simple-table tbody tr')).toHaveCount(18);
- await expect(page.locator('.simple-table tbody')).not.toContainText('Sin datos');
+ await expect(page.locator('.board-stock')).toHaveCount(18);
+ await page.reload();await expect(page.locator('.board-stock')).toHaveCount(18);
+ await expect(page.locator('.board-stock-scroll')).not.toContainText('Sin datos');
 });
