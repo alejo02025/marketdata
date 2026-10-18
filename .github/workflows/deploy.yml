@@ -20,18 +20,23 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Validate quantitative rules
         run: python -m unittest discover -s scripts -p 'test_*.py' -v
       - name: Refresh historical close data
         run: python scripts/refresh_market.py
       - name: Validate site build
         run: |
-          npm install
+          npm ci
           npm run build
+          printf '{"commit":"%s"}' "$GITHUB_SHA" > dist/version.json
           test -f dist/index.html
           grep -q 'assets/' dist/index.html
           if grep -q 'src/main.tsx' dist/index.html; then echo "TypeScript source leaked into deployment"; exit 1; fi
+      - name: Browser regression checks
+        run: |
+          npx playwright install --with-deps chromium
+          npm test
       - name: Upload compiled Pages site
         uses: actions/upload-pages-artifact@v3
         with:
@@ -50,7 +55,8 @@ jobs:
         run: |
           for attempt in $(seq 1 15); do
             page="$(curl --fail --silent --show-error --location --max-time 15 "https://alejo02025.github.io/marketdata/?rev=$GITHUB_SHA" || true)"
-            if echo "$page" | grep -q '/marketdata/assets/index-' && ! echo "$page" | grep -q 'src/main.tsx'; then
+            version="$(curl --fail --silent --location --max-time 15 "https://alejo02025.github.io/marketdata/version.json?rev=$GITHUB_SHA" || true)"
+            if echo "$version" | grep -q "$GITHUB_SHA" && echo "$page" | grep -q '/marketdata/assets/index-' && ! echo "$page" | grep -q 'src/main.tsx'; then
               echo "Live GitHub Pages index points to compiled assets."
               exit 0
             fi

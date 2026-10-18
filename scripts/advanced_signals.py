@@ -86,6 +86,7 @@ def calculate(candles,spy=None):
     prev_s200=mean(v[-201:-1])
     golden_cross=(prev_s50<=prev_s200 and s50> s200 and last>s200)
     golden_high_volume=golden_cross and liquid and (relative_volume or 0)>=1.2
+    golden_detected=golden_cross and liquid
     cmf20=cmf(candles);obv20=obv_slope(candles)
     # This signal cannot prove large funds are buying. It observes only price and volume.
     flow_positive=cmf20 is not None and cmf20>-.02 and obv20 is not None and obv20>-.05
@@ -94,7 +95,7 @@ def calculate(candles,spy=None):
     macd_improving=macd_hist>hist[-2] and hist[-2]>=hist[-3]
     macd_bullish=macd>macd_signal and macd_hist>0
     rsi_recovery=42<=r<=66 and r>pr
-    breakout=trend and liquid and break55 and (relative_volume or 0)>=1.5 and macd_improving and flow_positive
+    breakout=trend and liquid and break55 and (relative_volume or 0)>=1.5
     bearish=(last<s200 and s50<s200) or (last<s50 and (relative_volume or 0)>1.25 and flow_negative)
     setups=[]
     if not bearish:
@@ -104,22 +105,22 @@ def calculate(candles,spy=None):
                 "reason":"La vela tocó EMA 20 en tendencia alcista. "+("Cierre positivo y volumen al menos igual al promedio: confirmación preliminar." if touch_confirmed else "Aún no se confirmó un rebote; no implica comprar automáticamente."),
                 "invalidation":"Vigilar cierres por debajo de EMA 20 y pérdida de SMA 50."
             })
-        if golden_high_volume:
+        if golden_detected:
             setups.append({
-                "code":"golden_cross","label":"Golden Cross con volumen","stage":"Confirmación de tendencia",
-                "reason":"SMA 50 cruzó sobre SMA 200, con RVOL ≥1,2x y liquidez de al menos USD 20 M/día. Es una señal rezagada, no un precio óptimo de compra.",
+                "code":"golden_cross","label":"Golden Cross","stage":"Confirmación de tendencia" if golden_high_volume else "Alerta temprana",
+                "reason":"SMA 50 cruzó sobre SMA 200 con liquidez ≥USD 20 M/día. " + ("Volumen ≥1,2x." if golden_high_volume else "Sin confirmación de volumen ≥1,2x.") + " Señal rezagada, no compra automática.",
                 "invalidation":"Un nuevo cruce bajista o debilidad bajo SMA 200 deteriora la señal."
             })
         if breakout:
             setups.append({
                 "code":"breakout","label":"Ruptura de máximo de 55 ruedas","stage":"Ruptura confirmada",
-                "reason":"Superó máximo previo de 55 ruedas con RVOL ≥1,5x, MACD mejorando y flujo proxy positivo.",
+                "reason":"Superó máximo previo de 55 ruedas con RVOL ≥1,5x y tendencia alcista.",
                 "invalidation":"Cierre posterior por debajo de la resistencia superada."
             })
     if bearish:status,setup='Riesgo Creciente / Deterioro','risk'
     elif breakout:status,setup='Ruptura Confirmada','breakout'
     elif touch_in_uptrend:status,setup='Oportunidad de Entrada','ema20_touch'
-    elif golden_high_volume:status,setup='En Seguimiento / Precaución','golden_cross'
+    elif golden_detected:status,setup='En Seguimiento / Precaución','golden_cross'
     elif trend or near20:status,setup='En Seguimiento / Precaución','watch'
     else:status,setup='Sin Ventaja Identificada','neutral'
     bullish=[];bearish_points=[];neutral=[]
@@ -133,7 +134,7 @@ def calculate(candles,spy=None):
     if r>70:neutral.append("RSI por encima de 70: el momentum puede ser fuerte, pero aumenta el riesgo de extensión.")
     if relative_volume is not None and relative_volume<.8:neutral.append("Volumen inferior a su media de 50 ruedas: conviene exigir confirmación.")
     if status=='Ruptura Confirmada':
-        reason="Ruptura de máximos de 55 ruedas, volumen ≥1,5x, MACD en aceleración y proxy de flujo positivo."
+        reason="Ruptura de máximos de 55 ruedas, volumen ≥1,5x y tendencia alcista."
     elif setup=='ema20_touch':
         reason=("Rebote preliminar sobre EMA 20 dentro de tendencia alcista, con liquidez adecuada." if touch_confirmed else
                 "Posible entrada: la vela tocó EMA 20 en tendencia alcista; falta confirmar rebote. No es señal automática de compra.")
@@ -145,7 +146,7 @@ def calculate(candles,spy=None):
         reason="Estructura con aspectos favorables, pero falta confluencia para una oportunidad de entrada o ruptura."
     else:reason="Los criterios combinados de tendencia, momentum, volumen y flujo proxy no muestran ventaja clara."
     conditions={
-        "Precio > SMA 50 > SMA 200 y SMA 200 ascendente":trend,
+        "Precio y SMA 50 sobre SMA 200 no descendente":trend,
         "Toque real de EMA 20 en el rango OHLC":touches_ema20,
         "Tendencia alcista + liquidez diaria ≥USD 20 M":trend and liquid,
         "Rebote sobre EMA 20 (volumen ≥media)":touch_confirmed,

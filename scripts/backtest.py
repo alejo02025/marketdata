@@ -36,58 +36,56 @@ def metric(trades, equity, benchmark):
         'evidence':'limited' if len(trades)<10 else 'sample',
     }
 
+STRATEGIES = ('ema20_touch', 'golden_cross', 'breakout')
+
+def simulate(candles, signals, start, end, strategy, spy=None, cost=COST_ONE_WAY):
+    cash=1.;shares=0.;entry=None;trades=[];equity=[]
+    for i in range(start,end):
+        c=candles[i];equity.append(cash+shares*c['c'])
+        if i==end-1:break
+        signal=signals[i]
+        events=signal.get('setups',[])
+        enter=any(e['code']==strategy and e['stage']!='Alerta temprana' for e in events)
+        exit_now=shares>0 and (c['c']<signal['sma50'] or i-entry[0]>=126)
+        nxt=candles[i+1]
+        if exit_now:
+            cash=shares*nxt['o']*(1-cost)
+            trades.append({'entryDate':candles[entry[0]]['d'],'date':nxt['d'],'netReturn':cash/entry[1]-1})
+            shares=0.;entry=None
+        elif shares==0 and enter:
+            entry=(i+1,cash);shares=cash*(1-cost)/nxt['o'];cash=0.
+    if shares:
+        equity[-1]=shares*candles[end-1]['c']*(1-cost)
+        trades.append({'entryDate':candles[entry[0]]['d'],'date':candles[end-1]['d'],'netReturn':equity[-1]/entry[1]-1,'forcedLiquidation':True})
+    benchmark=[c['c'] for c in candles[start:end]]
+    m=metric(trades,equity,benchmark)
+    if m:
+        # Same endpoints; price returns, not dividend-reinvested total returns.
+        spy_map={c['d']:c['c'] for c in spy or []}
+        a=spy_map.get(candles[start]['d']);b=spy_map.get(candles[end-1]['d'])
+        m['spyReturnPct']=round((b/a-1)*100,4) if a and b else None
+        m['from']=candles[start]['d'];m['to']=candles[end-1]['d']
+    return m
+
 def backtest(candles,spy=None):
     if len(candles)<330:return None
-    start=220
-    cash=1.0
-    shares=0.0
-    entry_price=0.0
-    entry_idx=None
-    trades=[];daily=[];benchmark=[]
-    # 60% calibration window/40% forward evaluation. Fixed params chosen a priori,
-    # so the label represents a chronological segment, not optimization.
-    split=max(start+1,int(len(candles)*.6))
-    for i in range(start,len(candles)-1):
-        candle=candles[i]
-        # Account equity marked to market at close, zero lookahead.
-        daily.append(cash+shares*candle['c'])
-        benchmark.append(candle['c'])
-        hist=candles[:i+1]
-        subset_spy=spy[:i+1] if spy and spy[0]['d']==candles[0]['d'] else None
-        signal=calculate(hist,subset_spy)
-        enter=signal['status'] in ('Oportunidad de Entrada','Ruptura Confirmada')
-        exit_now=(shares>0 and (candle['c']<signal.get('sma50',float('inf')) or
-            signal['status']=='Riesgo Creciente / Deterioro' or (entry_idx is not None and i-entry_idx>=40)))
-        # Current close signal executes no earlier than NEXT session open.
-        nxt=candles[i+1];nxt_open=nxt['o']
-        if shares>0 and exit_now:
-            cash=shares*nxt_open*(1-COST_ONE_WAY)
-            gross=nxt_open/entry_price-1
-            net=(1+gross)*(1-COST_ONE_WAY)/(1+COST_ONE_WAY)-1
-            trades.append({'date':nxt['d'],'entryDate':candles[entry_idx]['d'] if entry_idx is not None else '', 'netReturn':net})
-            shares=0;entry_idx=None
-        elif shares==0 and enter:
-            shares=cash*(1-COST_ONE_WAY)/nxt_open
-            entry_price=nxt_open;entry_idx=i+1;cash=0
-    daily.append(cash+shares*candles[-1]['c'])
-    benchmark.append(candles[-1]['c'])
-    # Liquidate at final known close to mark final equity and an executed trade
-    # excluded from live order simulation; counts as hypothetical closing liquidation.
-    if shares>0:
-        final_price=candles[-1]['c']
-        daily[-1]=shares*final_price*(1-COST_ONE_WAY)
-        net=final_price/entry_price*(1-COST_ONE_WAY)/(1+COST_ONE_WAY)-1
-        trades.append({'date':candles[-1]['d'],'entryDate':candles[entry_idx]['d'],'netReturn':net})
-    cutoff=split-start
-    full=metric(trades,daily,benchmark)
-    out=metric([t for t in trades if t['date']>=candles[split]['d']],daily[cutoff:],benchmark[cutoff:])
+    start=220;end=len(candles);split=start+int((end-start)*.6)
+    signals={i:calculate(candles[:i+1]) for i in range(start,end)}
+    strategies={}
+    for code in STRATEGIES:
+        strategies[code]={
+            'full':simulate(candles,signals,start,end,code,spy),
+            'early':simulate(candles,signals,start,split,code,spy),
+            'outOfSample':simulate(candles,signals,split,end,code,spy),
+            'higherCost':simulate(candles,signals,start,end,code,spy,cost=.005)}
     return {
         'period':{'from':candles[start]['d'],'to':candles[-1]['d'],'outOfSampleStart':candles[split]['d']},
-        'full':full,'outOfSample':out,'feeAndSlippagePerSidePct':COST_ONE_WAY*100,
-        'method':'Long only. Technical signal at close t; enter/exit at t+1 open; single fully invested position; max holding 40 sessions; close below SMA50; liquidate final close.',
-        'warnings':['Fixed preselected parameters; no statistical significance claimed.',
-            'Present-day surviving universe introduces survivorship/selection bias.',
-            'Raw OHLC history may not accurately incorporate dividends, splits or taxes.',
-            'OHLC daily fills and 0.2% one-way friction are simplifying assumptions.',
-            'Out-of-sample is a chronological segment, not a fully independent forward trial.']
+        'strategies':strategies,'full':strategies['ema20_touch']['full'],'outOfSample':strategies['ema20_touch']['outOfSample'],
+        'feeAndSlippagePerSidePct':COST_ONE_WAY*100,
+        'method':'Cada estrategia por separado. Solo eventos confirmados. Señal al cierre t, ejecución en apertura t+1. Una posición sin apalancamiento; salida bajo SMA50 o tras 126 sesiones. Liquidación al cierre final. Cada subperíodo empieza en efectivo. Costos: 0,20% por lado y prueba a 0,50%. Benchmarks: retorno de precio bruto, sin dividendos.',
+        'warnings':['Survivorship/selection bias: universo de ganadores actuales, no universo histórico.',
+            'Sin dividendos reinvertidos, impuestos ni garantía de ajustes corporativos correctos.',
+            'Último 40% es un holdout retrospectivo, NO una prueba independiente fuera de muestra.',
+            'Costos fijos y fills diarios simplificados. Las liquidaciones finales cuentan como operaciones.',
+            'No hay optimización ni evidencia estadística de superioridad. Pocas operaciones implican evidencia insuficiente.']
     }

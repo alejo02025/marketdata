@@ -1,8 +1,8 @@
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {lazy,Suspense,useCallback,useEffect,useMemo,useState} from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {Activity,ArrowDownRight,ArrowUpRight,BarChart3,BookOpen,Check,ChevronDown,ChevronRight,Clock3,Copy,ExternalLink,Filter,Info,Menu,Plus,RefreshCw,Search,ShieldAlert,ShieldCheck,Target,TrendingUp,X} from 'lucide-react';
-import PriceChart from './PriceChart';
+const PriceChart=lazy(()=>import('./PriceChart'));
 import {money,percentage,readLocal,saveLocal,shortDate,sourceLinks,statusColor,tickers,validTicker} from './market';
 import type {Asset,Daily,Snapshot} from './market';
 import './style.css';
@@ -15,7 +15,8 @@ const finviz=(t:string)=>'https://finviz.com/quote.ashx?t='+encodeURIComponent(t
 const yahoo=(t:string)=>'https://finance.yahoo.com/quote/'+encodeURIComponent(t.replace('.','-'));
 function shortStatus(status:string){return status==='Oportunidad de Entrada'?'Posible entrada':status==='Ruptura Confirmada'?'Ruptura':status==='En Seguimiento / Precaución'?'En seguimiento':status==='Riesgo Creciente / Deterioro'?'Precaución':'Sin señal'}
 function strategyTitle(code:string){return code==='ema20_touch'?'Toque EMA 20':code==='golden_cross'?'Golden Cross':code==='breakout'?'Ruptura de máximos':'Señal técnica'}
-function stageShort(stage:string){return stage==='Rebote confirmado'?'Confirmada':stage==='Alerta temprana'?'En observación':stage==='Confirmación de tendencia'?'Tendencia confirmada':stage==='Ruptura confirmada'?'Confirmada':'Histórica'}
+function stageShort(stage:string){return stage==='Rebote confirmado'?'Rebote confirmado':stage==='Alerta temprana'?'Alerta temprana':stage==='Confirmación de tendencia'?'Tendencia confirmada':stage==='Ruptura confirmada'?'Ruptura confirmada':'Histórica'}
+function assetStatus(a:Asset){return a.signal.setups?.length?stageShort(a.signal.setups[0].stage):shortStatus(a.signal.status)}
 function displayDate(date:string){const d=new Date(date+'T12:00:00Z');return Number.isNaN(d.getTime())?date:d.toLocaleDateString('es-AR',{timeZone:'UTC',day:'2-digit',month:'short'})}
 function Status({name}:{name:string}){return <span className={'status-chip '+statusColor(name)}><span className="status-dot"/>{name}</span>}
 function LinkOut({href,children}:{href:string;children:React.ReactNode}){return <a href={href} target="_blank" rel="noopener noreferrer">{children}<ExternalLink size={13}/></a>}
@@ -23,22 +24,19 @@ function MetaMetric({label,value,detail,variant}:{label:string;value:string;deta
 function PulseBackdrop(){return <div className="ambient-market" aria-hidden="true"><div className="aurora glow-a"/><div className="aurora glow-b"/><div className="grid-glow"/><div className="market-wave wave-one"/><div className="market-wave wave-two"/></div>}
 function RatingGroup({title,tone,items}:{title:string;tone:string;items:string[]}){return <section className={'signal-points '+tone}><div className="points-title"><span className="point-icon"/>{title}<strong>{items.length}</strong></div>{items.length?<ul>{items.map((x,i)=><li key={i}>{x}</li>)}</ul>:<p className="unavailable">Sin observaciones concluyentes.</p>}</section>}
 function BacktestPanel({asset}:{asset:Asset}){
- const bt=asset.backtest,full=bt?.full,oos=bt?.outOfSample;
- const fmt=(v:number|null|undefined,unit='')=>v==null||!Number.isFinite(v)?'—':v.toFixed(2)+unit;
- return <section className="backtest-panel">
-  <div className="module-header"><div><span className="eyebrow">RESEARCH / HISTORICAL SIMULATION</span><h3>Backtesting de la estrategia</h3></div><span className="warning-mark">RESULTADOS HISTÓRICOS · SESGADOS</span></div>
-  {bt&&full&&oos?<><p className="panel-note">Período {bt.period.from} a {bt.period.to}. Validación cronológica desde {bt.period.outOfSampleStart}. Comisiones y deslizamiento: {bt.feeAndSlippagePerSidePct.toFixed(2)}% por operación.</p>
-  <div className="backtest-grid"><div className="backtest-col"><h4>Período completo</h4><div><span>Operaciones</span><b>{full.trades}</b></div><div><span>Retorno estrategia</span><b>{fmt(full.totalReturnPct,'%')}</b></div><div><span>Buy & Hold</span><b>{fmt(full.buyHoldReturnPct,'%')}</b></div><div><span>Máximo drawdown</span><b>{fmt(full.maxDrawdownPct,'%')}</b></div><div><span>Win rate</span><b>{fmt(full.winRate,'%')}</b></div><div><span>Profit factor</span><b>{fmt(full.profitFactor)}</b></div></div>
-  <div className="backtest-col"><h4>Último 40% cronológico</h4><div><span>Operaciones</span><b>{oos.trades}</b></div><div><span>Retorno estrategia</span><b>{fmt(oos.totalReturnPct,'%')}</b></div><div><span>Buy & Hold</span><b>{fmt(oos.buyHoldReturnPct,'%')}</b></div><div><span>Sharpe</span><b>{fmt(oos.sharpe)}</b></div><div><span>Sortino</span><b>{fmt(oos.sortino)}</b></div><div><span>Retorno medio/trade</span><b>{fmt(oos.avgTradePct,'%')}</b></div></div></div>
-  <details className="backtest-method"><summary>Ver método y limitaciones</summary><p>{bt.method}</p><ul>{bt.warnings.map((w,i)=><li key={i}>{w}</li>)}</ul></details>
-  <p className="method-warning"><ShieldAlert size={16}/> Muestra con sesgo de supervivencia, sin validación prospectiva. No es prueba de rentabilidad futura.</p>
-  </>:<div className="empty-coverage"><Info size={18}/> No se realizó aún un backtest de este activo. No se publican estadísticas ficticias.</div>}
+ const bt=asset.backtest;
+ const fmt=(v:number|null|undefined)=>v==null?'—':v.toFixed(2)+'%';
+ return <section className="backtest-panel"><h3>Pruebas históricas por estrategia</h3>
+ {bt?.strategies?<><p className="panel-note">{bt.period.from} — {bt.period.to}. Costo por lado: {bt.feeAndSlippagePerSidePct}%. Resultados exploratorios, sin validación independiente.</p>
+ {Object.entries(bt.strategies).map(([code,r])=><details className="simple-disclosure" key={code}><summary>{strategyTitle(code)} · {r.full?.trades||0} operaciones</summary><div className="chart-data-scroll"><table className="simple-table"><thead><tr><th>Período</th><th>Retorno</th><th>Buy & hold</th><th>SPY</th><th>Win rate</th><th>Drawdown</th><th>Trades</th></tr></thead><tbody>{[['Completo',r.full],['Primer 60%',r.early],['Último 40%*',r.outOfSample],['Costo 0,50%/lado',r.higherCost]].map(([label,value])=>{const m=value as typeof r.full;return <tr key={label as string}><td>{label as string}</td><td>{fmt(m?.totalReturnPct)}</td><td>{fmt(m?.buyHoldReturnPct)}</td><td>{fmt(m?.spyReturnPct)}</td><td>{fmt(m?.winRate)}</td><td>{fmt(m?.maxDrawdownPct)}</td><td>{m?.trades??'—'}</td></tr>})}</tbody></table><p>* Segmento retrospectivo; no equivale a resultados fuera de muestra independientes. Menos de 10 operaciones: evidencia insuficiente.</p></div></details>)}
+ <details className="backtest-method"><summary>Método, fuentes y limitaciones</summary><p>{bt.method}</p><ul>{bt.warnings.map(w=><li key={w}>{w}</li>)}</ul><p><LinkOut href="https://www.tradingview.com/pine-script-docs/concepts/strategies/">Metodología de simulación</LinkOut> · <LinkOut href="https://www.aqr.com/-/media/AQR/Documents/Insights/Journal-Article/AQR-JPM-Fall-2017.pdf">Investigación sobre seguimiento de tendencia</LinkOut></p><p>La evidencia sobre seguimiento de tendencia no valida estas reglas particulares de EMA 20, Golden Cross o ruptura.</p></details></>:<p>Sin prueba por estrategia disponible. No se muestran resultados del motor anterior.</p>}
  </section>
 }
+
 export default function App(){
  const [page,setPage]=useState<Page>('radar');
  const [ticker,setTicker]=useState('GOOGL');
- const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
+ const [snapshot,setSnapshot]=useState<Snapshot|null>(()=>readLocal<Snapshot|null>('market-radar-snapshot-v3',null));
  const [daily,setDaily]=useState<Daily|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
@@ -57,8 +55,8 @@ export default function App(){
    if(!p.ok)throw new Error('Todavía no se publicó un snapshot de mercado.');
    const data:Snapshot=await p.json();
    if(data.schema<3||!data.assets||!Object.keys(data.assets).length)throw new Error('Las señales avanzadas todavía están actualizándose.');
-   setSnapshot(data);setError('');
-  }catch(e){setError(e instanceof Error?e.message:'Error al leer datos.');setSnapshot(null)}
+   setSnapshot(data);saveLocal('market-radar-snapshot-v3',data);setError('');
+  }catch(e){setError(e instanceof Error?e.message:'Error al leer datos.')}
   finally{setLoading(false)}
  },[]);
  useEffect(()=>{fetchData()},[fetchData]);
@@ -70,7 +68,8 @@ export default function App(){
    .catch(()=>setDaily(null));
  },[]);
  const current=assets[ticker];
- const runDate=snapshot?.generatedAt?shortDate(snapshot.generatedAt):null;
+ const latestSession=Object.values(assets).map(a=>a.lastSession).sort().slice(-1)[0];
+ const runDate=latestSession?displayDate(latestSession):null;
  const changedSince=snapshot?.generatedAt?Math.max(0,(Date.now()-new Date(snapshot.generatedAt).getTime())/3600000):null;
  const aged=changedSince!=null&&changedSince>40;
  const results=useMemo(()=>{
@@ -86,11 +85,11 @@ export default function App(){
  },[watch,query,filter,sort,snapshot]);
  const opportunities=watch.filter(t=>['Oportunidad de Entrada','Ruptura Confirmada'].includes(assets[t]?.signal.status)||(assets[t]?.signal.setups||[]).some(x=>x.code==='golden_cross'));
  const signalEvents=useMemo(()=>{
-  const rows=watch.flatMap(t=>(assets[t]?.recentSignals||[]).map(h=>({...h,ticker:t,lastSession:assets[t].lastSession,currency:assets[t].currency}))).sort((a,b)=>b.date.localeCompare(a.date)||b.score-a.score);
+  const rows=watch.flatMap(t=>(assets[t]?.recentSignals||[]).filter(h=>h.date!==latestSession).map(h=>({...h,ticker:t,lastSession:assets[t].lastSession,currency:assets[t].currency}))).sort((a,b)=>b.date.localeCompare(a.date)||b.score-a.score);
   const seen=new Set<string>();
   return rows.filter(h=>{const key=h.ticker+'|'+(h.setupCode||h.status);if(seen.has(key))return false;seen.add(key);return true}).slice(0,9);
  },[snapshot,watch]);
- const todayEvents=watch.flatMap(t=>(assets[t]?.signal.setups||[]).map(h=>({...h,ticker:t,date:assets[t].lastSession,price:assets[t].price,currency:assets[t].currency}))).slice(0,6);
+ const todayEvents=watch.filter(t=>assets[t]?.lastSession===latestSession).flatMap(t=>(assets[t]?.signal.setups||[]).map(h=>({...h,ticker:t,date:assets[t].lastSession,price:assets[t].price,currency:assets[t].currency}))).sort((a,b)=>Number(a.stage==='Alerta temprana')-Number(b.stage==='Alerta temprana'));
  const risks=watch.filter(t=>assets[t]?.signal.status==='Riesgo Creciente / Deterioro');
  const pending=watch.filter(t=>assets[t]?.signal.status==='En Seguimiento / Precaución');
  function go(which:Page){setPage(which);setNavOpen(false);setToast('')}
@@ -103,17 +102,17 @@ export default function App(){
  return <div className="radar-app"><PulseBackdrop/>
  <header className="app-header"><div className="nav-inner">
   <button className="identity" onClick={()=>go('radar')}><span className="identity-mark"><img src={import.meta.env.BASE_URL+'logo.svg'} alt="Market Radar" width="39" height="39"/></span><span className="identity-label"><b>MARKET<span>RADAR</span></b><small>SIGNAL INTELLIGENCE</small></span></button>
-  <nav className={'header-tabs '+(navOpen?'expanded':'')} aria-label="Secciones principales">{(['radar','analysis','daily'] as Page[]).map(p=><button key={p} className={page===p?'active':''} onClick={()=>go(p)}>{names[p]}</button>)}</nav>
+  <nav className={'header-tabs '+(navOpen?'expanded':'')} aria-label="Secciones principales">{(['radar','analysis','daily'] as Page[]).map(p=><button key={p} aria-current={page===p?'page':undefined} className={page===p?'active':''} onClick={()=>go(p)}>{names[p]}</button>)}</nav>
   <div className="header-meta"><span className="market-pill"><i/> {snapshot?'COBERTURA '+snapshot.coverageCount:'SIN DATOS'}</span><span className="top-date">{runDate||'Esperando cierre'}</span><button className="header-refresh" onClick={fetchData} aria-label="Actualizar datos"><RefreshCw size={16}/></button></div>
-  <button className="nav-toggle" onClick={()=>setNavOpen(!navOpen)} aria-label="Menú"><Menu size={21}/></button>
+  <button className="nav-toggle" onClick={()=>setNavOpen(!navOpen)} aria-label="Menú" aria-expanded={navOpen}><Menu size={21}/></button>
  </div></header>
  <main className="site-main">
  {toast&&<div className="toast-modern" role="status"><Info size={16}/>{toast}<button aria-label="Cerrar" onClick={()=>setToast('')}><X size={16}/></button></div>}
- {error&&<div className="source-warning"><ShieldAlert size={17}/>{error} No hay precios simulados.</div>}
- {aged&&<div className="source-warning"><Clock3 size={16}/> Snapshot desactualizado: último refresh {runDate}. No interpretarlo como señal intradía.</div>}
+ {error&&<div className="source-warning"><ShieldAlert size={17}/>{error} Se conserva el último dato disponible.</div>}
+ {aged&&<div className="source-warning"><Clock3 size={16}/> Snapshot desactualizado: última descarga {snapshot?.generatedAt}. No interpretarlo como señal intradía.</div>}
 
  {page==='radar'&&<>
-  <div className="simple-heading"><div><h1>Radar<span className="title-pulse"/></h1><p>Oportunidades en acciones de EE. UU.</p></div><div className="simple-update"><span className="update-dot"/>{runDate?'Último cierre · '+runDate:'Sin datos verificados'}<button onClick={fetchData} aria-label="Actualizar datos"><RefreshCw size={15}/></button></div></div>
+  <div className="simple-heading"><div><h1>Radar<span className="title-pulse"/></h1><p>Oportunidades en acciones de EE. UU.</p></div><div className="simple-update"><span className="update-dot"/>{runDate?'Cierre · '+runDate:'Sin datos verificados'}<button onClick={fetchData} aria-label="Actualizar datos"><RefreshCw size={15}/></button></div></div>
   <div className="simple-stats">
    <div className="simple-stat"><b>{snapshot?String(todayEvents.length).padStart(2,'0'):'—'}</b><span>Alertas del cierre</span></div>
    <div className="simple-stat"><b>{snapshot?String(signalEvents.length).padStart(2,'0'):'—'}</b><span>Señales recientes</span></div>
@@ -121,12 +120,12 @@ export default function App(){
    <div className="simple-stat"><b>{snapshot?String(snapshot.coverageCount).padStart(2,'0'):'—'}</b><span>Activos con datos</span></div>
   </div>
   <div className="simple-section-title"><div><span className="mini-label">01 / DETECTOR</span><h2>Alertas del último cierre</h2></div><span className="section-count">{todayEvents.length} señales</span></div>
-  {todayEvents.length?<div className="simple-cards">{todayEvents.map((h,i)=><button className="simple-signal-card" key={h.ticker+h.code+i} onClick={()=>analyze(h.ticker)}>
+  {todayEvents.length?<div className="simple-cards">{todayEvents.map((h,i)=><button className={'simple-signal-card '+(h.stage==='Alerta temprana'?'early':'confirmed')} key={h.ticker+h.code+i} onClick={()=>analyze(h.ticker)}>
    <div className="simple-card-top"><strong>{h.ticker}</strong><span className={'simple-stage '+(h.stage==='Alerta temprana'?'watch':'active')}>{stageShort(h.stage)}</span></div>
    <div className="simple-card-main"><span>{strategyTitle(h.code)}</span><b>{money(h.price,h.currency)}</b></div>
-   <div className="simple-card-foot"><span>{displayDate(h.date)}</span><span>Ver gráfico <ChevronRight size={15}/></span></div>
+   <div className="simple-card-foot"><span>{displayDate(h.date)} · Cierre</span><span>Ver gráfico <ChevronRight size={15}/></span></div>
   </button>)}</div>:<div className="simple-empty"><Check size={19}/><div><b>Sin alertas nuevas</b><span>Podés revisar las últimas señales más abajo.</span></div></div>}
-  <div className="simple-section-title"><div><span className="mini-label">02 / HISTORIAL</span><h2>Últimas oportunidades</h2></div><span className="section-count">Siempre visibles</span></div>
+  <div className="simple-section-title"><div><span className="mini-label">02 / HISTORIAL</span><h2>Señales anteriores</h2></div><span className="section-count">Históricas · precio de la señal</span></div>
   {signalEvents.length?<div className="simple-cards history">
   {signalEvents.map((h,i)=><button className="simple-signal-card past" key={h.ticker+h.date+(h.setupCode||'')+i} onClick={()=>analyze(h.ticker)}>
    <div className="simple-card-top"><strong>{h.ticker}</strong><span className="simple-past-date">{displayDate(h.date)}</span></div>
@@ -135,8 +134,8 @@ export default function App(){
   </button>)}
   </div>:<div className="simple-empty"><Clock3 size={19}/><div><b>Preparando historial</b><span>Se mostrarán señales reales cuando haya datos verificados.</span></div></div>}
   <div className="simple-section-title"><div><span className="mini-label">03 / MERCADO</span><h2>Explorar activos</h2></div><span className="section-count">{results.length} de {watch.length}</span></div>
-  <div className="simple-filters"><div className="finder"><Search size={16}/><input aria-label="Buscar ticker" placeholder="Buscar acción..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="select-wrap"><Filter size={14}/><select aria-label="Filtrar señales" value={filter} onChange={e=>setFilter(e.target.value)}>{filters.map(f=><option key={f} value={f}>{f==='Oportunidad de Entrada'?'Posible entrada':f==='Ruptura Confirmada'?'Ruptura':f==='En Seguimiento / Precaución'?'En seguimiento':f==='Riesgo Creciente / Deterioro'?'Precaución':f==='Sin Ventaja Identificada'?'Sin señal':f}</option>)}</select><ChevronDown size={13}/></div><form className="ticker-add" onSubmit={addTicker}><input aria-label="Nuevo ticker" placeholder="Ticker" value={newTicker} onChange={e=>setNewTicker(e.target.value)}/><button type="submit" aria-label="Añadir ticker"><Plus size={16}/></button></form></div>
-  <div className="simple-table-wrap"><table className="simple-table"><thead><tr><th>Activo</th><th>Último cierre</th><th>Cambio</th><th>RSI</th><th>Señal</th><th/></tr></thead><tbody>{results.map(t=>{const a=assets[t];return <tr key={t} tabIndex={0} role="button" onClick={()=>analyze(t)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();analyze(t)}}}><td><strong>{t}</strong><small>{a?.company||'Sin cobertura'}</small></td><td>{money(a?.price,a?.currency)}</td><td className={(a?.changePct||0)>=0?'up':'down'}>{percentage(a?.changePct,true)}</td><td>{a?.signal.rsi14?.toFixed(0)||'—'}</td><td><span className={'simple-status '+statusColor(a?.signal.status||'')}>{a?shortStatus(a.signal.status):'Sin datos'}</span></td><td><ChevronRight size={15}/></td></tr>})}</tbody></table>{results.length===0&&<div className="simple-empty">No hay activos para este filtro.</div>}</div>
+  <div className="simple-filters"><div className="finder"><Search size={16}/><input aria-label="Buscar ticker" placeholder="Buscar acción..." value={query} onChange={e=>setQuery(e.target.value)}/></div><div className="select-wrap"><Filter size={14}/><select aria-label="Filtrar señales" value={filter} onChange={e=>setFilter(e.target.value)}>{filters.map(f=><option key={f} value={f}>{f==='Oportunidad de Entrada'?'Posible entrada':f==='Ruptura Confirmada'?'Ruptura':f==='En Seguimiento / Precaución'?'En seguimiento':f==='Riesgo Creciente / Deterioro'?'Precaución':f==='Sin Ventaja Identificada'?'Sin señal':f}</option>)}</select><ChevronDown size={13}/></div></div>
+  <div className="simple-table-wrap"><table className="simple-table"><thead><tr><th>Activo</th><th>Último cierre</th><th>Cambio</th><th>RSI</th><th>Señal</th><th/></tr></thead><tbody>{results.map(t=>{const a=assets[t];return <tr key={t} tabIndex={0} role="button" onClick={()=>analyze(t)} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();analyze(t)}}}><td><strong>{t}</strong><small>{a?.company||'Sin cobertura'}</small></td><td>{money(a?.price,a?.currency)}</td><td className={(a?.changePct||0)>=0?'up':'down'}>{percentage(a?.changePct,true)}</td><td>{a?.signal.rsi14?.toFixed(0)||'—'}</td><td><span className={'simple-status '+statusColor(a?.signal.status||'')}>{a?assetStatus(a):'Sin datos'}</span></td><td><ChevronRight size={15}/></td></tr>})}</tbody></table>{results.length===0&&<div className="simple-empty">No hay activos para este filtro.</div>}</div>
   <details className="simple-disclosure"><summary>¿Cómo funcionan las señales?</summary><div><p><b>Toque EMA 20:</b> posible entrada cuando una vela toca la media móvil de 20 días en una tendencia alcista.</p><p><b>Golden Cross:</b> cruce SMA 50 / SMA 200 con volumen; confirma tendencia, no un precio óptimo de entrada.</p><p><b>Ruptura:</b> precio supera máximos previos con volumen.</p><p>Son alertas técnicas experimentales, no recomendaciones automáticas. Los scores no son probabilidades. Los datos son del último cierre verificado.</p></div></details>
  </>}
 
@@ -145,9 +144,9 @@ export default function App(){
   {current?<>
    <div className="simple-asset-header">
     <div><span className="mini-label">{current.company}</span><div className="simple-asset-quote"><b>{ticker}</b><strong>{money(current.price,current.currency)}</strong><span className={current.changePct>=0?'up':'down'}>{percentage(current.changePct,true)}</span></div></div>
-    <div className="simple-asset-state"><span className={'simple-status '+statusColor(current.signal.status)}>{shortStatus(current.signal.status)}</span><small>{displayDate(current.lastSession)} · {current.dataStatus}</small></div>
+    <div className="simple-asset-state"><span className={'simple-status '+statusColor(current.signal.status)}>{assetStatus(current)}</span><small>{displayDate(current.lastSession)} · {current.dataStatus}</small><small>Descarga: {current.retrievedAt}</small></div>
    </div>
-   <section className="chart-card"><PriceChart ticker={ticker} candles={current.candles}/></section>
+   <section className="chart-card"><Suspense fallback={<div className="chart-message">Cargando gráfico…</div>}><PriceChart ticker={ticker} candles={current.candles}/></Suspense></section>
    <div className="simple-indicators">
     <div><span>EMA 20</span><strong>{money(current.signal.ema20,current.currency)}</strong></div>
     <div><span>SMA 200</span><strong>{money(current.signal.sma200,current.currency)}</strong></div>
@@ -155,7 +154,7 @@ export default function App(){
     <div><span>Volumen relativo</span><strong>{current.signal.relativeVolume?.toFixed(2)||'—'}x</strong></div>
    </div>
    <div className="simple-analysis-signal">
-    <div className="simple-section-title"><div><span className="mini-label">SEÑAL TÉCNICA</span><h2>¿Qué está pasando?</h2></div><span className={'simple-status '+statusColor(current.signal.status)}>{shortStatus(current.signal.status)}</span></div>
+    <div className="simple-section-title"><div><span className="mini-label">SEÑAL TÉCNICA</span><h2>¿Qué está pasando?</h2></div><span className={'simple-status '+statusColor(current.signal.status)}>{assetStatus(current)}</span></div>
     {current.signal.setups?.length?<div className="simple-active-strategies">{current.signal.setups.map(x=><div className="simple-strategy" key={x.code}><span>{strategyTitle(x.code)}</span><strong>{stageShort(x.stage)}</strong></div>)}</div>:<div className="simple-standby">Sin evento activo en el último cierre.</div>}
     <details className="simple-disclosure"><summary>Ver explicación y condiciones de riesgo</summary><p>{current.signal.reason}</p>{current.signal.setups?.map(x=><div key={x.code}><b>{x.label} — {x.stage}</b><p>{x.reason}</p><p><b>Invalidación:</b> {x.invalidation}</p></div>)}<p>Señales técnicas experimentales; no aseguran rentabilidad. Los datos son del último cierre.</p></details>
    </div>
@@ -170,10 +169,10 @@ export default function App(){
   </>:<div className="simple-empty"><Info size={20}/><div><b>Sin datos disponibles</b><span>Este ticker requiere un histórico verificado.</span></div></div>}
  </>}
  {page==='daily'&&<>
-  <div className="page-title"><div><span className="eyebrow">DAILY RESEARCH / ARGENTINA & GLOBAL MARKETS</span><h1>Market Daily<span>.</span></h1><p>El mismo texto base del briefing matutino del chat, presentado en formato editorial.</p></div>{daily?.status==='published'&&<button className="copy-button" onClick={copyDaily}><Copy size={15}/> Copiar briefing exacto</button>}</div>
+  <div className="page-title"><div><span className="eyebrow">DAILY RESEARCH / ARGENTINA & GLOBAL MARKETS</span><h1>Market Daily<span>.</span></h1><p>Briefings en español e inglés B1. Fecha y fuentes de cada edición.</p></div>{daily?.status==='published'&&<button className="copy-button" onClick={copyDaily}><Copy size={15}/> Copiar briefing exacto</button>}</div>
   <div className="daily-hero"><div><span className="eyebrow">MORNING BRIEF · NIVEL B1 + ESPAÑOL</span><h2>LO QUE NECESITÁS SABER<br/>PARA ARRANCAR LA JORNADA.</h2><p>Mercados internacionales, Argentina, tasas, dólares, bonos, riesgos y calendario.</p></div><div className="daily-date">{daily?.date||new Date().toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'})}</div></div>
-  {daily?.status==='published'&&daily.bodyMarkdown.trim()?<article className="daily-article"><div className="daily-meta"><BookOpen size={17}/> Edición {daily.date} · contenido compartido con briefing de ChatGPT cuando la automatización pueda publicarlo</div><ReactMarkdown remarkPlugins={[remarkGfm]}>{daily.bodyMarkdown}</ReactMarkdown></article>:
-    <section className="daily-pending"><BookOpen size={29}/><h3>No hay edición verificada publicada todavía</h3><p>La web está preparada para recibir el mismo texto Markdown del briefing diario. No se copian titulares ni cifras de jornadas anteriores bajo la fecha de hoy.</p><small>Archivo compartido: public/data/daily.json · la entrega por ChatGPT sigue siendo independiente hasta completar la sincronización.</small></section>}
+  {daily?.status==='published'&&daily.bodyMarkdown.trim()?<article className="daily-article"><div className="daily-meta"><BookOpen size={17}/> Edición {daily.date} · edición publicada · sin sincronización automática con ChatGPT</div><ReactMarkdown remarkPlugins={[remarkGfm]}>{daily.bodyMarkdown}</ReactMarkdown></article>:
+    <section className="daily-pending"><BookOpen size={29}/><h3>No hay edición verificada publicada todavía</h3><p>Todavía no se cargó un briefing en español e inglés B1. No se muestran noticias antiguas como actuales.</p><small>La entrega en ChatGPT es independiente. No hay sincronización automática verificada.</small></section>}
   <div className="module-header"><div><span className="eyebrow">RESEARCH DESK</span><h2>Fuentes prioritarias</h2></div></div><div className="source-grid">{sourceLinks.map(s=><a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" className="source-tile"><span>{s.label.slice(0,1)}</span><h3>{s.label}</h3><p>{s.description}</p><ExternalLink size={15}/></a>)}</div>
  </>}
  </main></div>;

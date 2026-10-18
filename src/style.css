@@ -434,3 +434,24 @@ body{background:#090d15}
 .simple-chart-toolbar .time-trigger{padding:7px}
 .simple-range-group{border-top:1px solid #26364b;padding-top:9px}
 }
+/* Audit: readable controls, restrained cards and a native financial time scale. */
+button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visible,tr:focus-visible{outline:2px solid #7caaff;outline-offset:3px}
+.simple-signal-card.confirmed{border-left:3px solid #43d6a2}
+.simple-signal-card.early{border-left:3px solid #e5bb70}
+.simple-card-top>strong{font-size:22px}
+.simple-stage,.simple-status{font-size:12px}
+.simple-cards.history{grid-template-columns:repeat(3,minmax(0,1fr))}
+.financial-chart{height:470px;width:100%}
+.chart-topline{flex-wrap:wrap;gap:8px;min-height:45px}
+.chart-topline>div{display:flex;flex-wrap:wrap;gap:10px}
+.chart-legend{flex-wrap:wrap;gap:16px;padding:12px}
+.chart-footer{flex-wrap:wrap;gap:8px}
+.chart-footer a{color:#a6bbd8}
+.chart-data{padding:12px;color:#a6bbd8;font-size:12px}
+.chart-data summary{cursor:pointer;padding:8px}
+.chart-data-scroll{overflow-x:auto}
+.chart-data table{width:100%;text-align:right;border-collapse:collapse}
+.chart-data th,.chart-data td{padding:8px;border-bottom:1px solid #26364b}
+[hidden]{display:none!important}
+@media(max-width:650px){.financial-chart{height:370px}.simple-cards.history{grid-template-columns:1fr}.simple-stage,.simple-status{font-size:10px;white-space:normal}.simple-card-top>strong{font-size:20px}.simple-time-group>button{min-height:40px}.simple-time-group{gap:1px}.chart-topline{padding:10px;font-size:11px}.simple-asset-state{max-width:48%;overflow-wrap:anywhere}.header-tabs{position:static!important;display:flex!important;flex-direction:row!important;width:auto!important;gap:0!important;padding:3px!important}.header-tabs button{font-size:11px;padding:10px 8px}.nav-toggle{display:none}.identity-label{display:none}.nav-inner{gap:8px}.simple-card-foot,.simple-empty span{font-size:12px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}

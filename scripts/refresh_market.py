@@ -106,9 +106,15 @@ def fetch(ticker):
             times=result["timestamp"]
             q=result["indicators"]["quote"][0]
             candles=[]
+            now=dt.datetime.now(dt.timezone.utc).timestamp()
+            session_end=result.get("meta",{}).get("currentTradingPeriod",{}).get("regular",{}).get("end")
             for i,t in enumerate(times):
+                if session_end and t>=session_end-24*3600 and now<session_end+900:
+                    continue
                 c,o,h,l,v=(q[k][i] for k in ("close","open","high","low","volume"))
                 if any(x is None or not math.isfinite(float(x)) for x in (c,o,h,l)) or min(c,o,h,l) <= 0:
+                    continue
+                if h<max(o,c,l) or l>min(o,c,h) or v is None or not math.isfinite(float(v)) or v<0:
                     continue
                 candles.append({"d":dt.datetime.fromtimestamp(t,dt.timezone.utc).strftime("%Y-%m-%d"),
                   "o":round(float(o),3),"h":round(float(h),3),"l":round(float(l),3),
@@ -124,7 +130,7 @@ def fetch(ticker):
                 "candles":candles[-1250:],"lastSession":candles[-1]["d"],
                 "price":candles[-1]["c"],"changePct":rnd(pct(candles[-1]["c"],candles[-2]["c"])),
                 "source":PROVIDER,"retrievedAt":dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-                "dataStatus":"Official Close" if meta.get("marketState")!="REGULAR" else "Delayed"}
+                "dataStatus":"Official Close"}
         except (urllib.error.URLError,TimeoutError,KeyError,IndexError,TypeError,ValueError,OSError) as e:
             err=e
             print("Provider failure",ticker,host,str(e)[:180],flush=True)
@@ -155,29 +161,14 @@ def main():
         item["signal"]=calculate(item["candles"], spy if ticker!="SPY" else None)
         # Preserve the most recent genuine historical setup, even after market close.
         # Scan only completed sessions and never substitute a historical signal for a current one.
-        history=[]
-        candles=item["candles"]
-        for idx in range(max(220,len(candles)-125),len(candles)):
-            result=calculate(candles[:idx+1])
-            for event in result.get("setups",[]):
-                history.append({
-                    "date":candles[idx]["d"],"price":candles[idx]["c"],
-                    "status":result["status"],"score":result["score"],
-                    "reason":event["reason"],"setupCode":event["code"],
-                    "setupLabel":event["label"],"stage":event["stage"]
-                })
-        item["recentSignals"]=history[-12:]
-        item["lastHistoricalSignal"]=history[-1] if history else None
-        # Reproducible fixed-rule research, not a validated trading recommendation.
-        if ticker in ("SPY","QQQ","AAPL","MSFT","NVDA","GOOGL"):
-            item["backtest"]=backtest(item["candles"],spy if ticker!="SPY" else None)
-        else:
-            item.pop("backtest",None)
+        # Research is recomputed once below, also when provider data is unavailable.
         item["price"]=item["candles"][-1]["c"]
         item["lastSession"]=item["candles"][-1]["d"]
     # Never overwrite a valid old snapshot if the provider failed for every ticker.
     if not fresh and old:
         print("No new prices: preserving last-good market.json",flush=True)
+        from recalculate import main as recompute
+        recompute()
         return
     if not merged:
         print("No market data available; no fabricated snapshot created",flush=True)
@@ -187,6 +178,8 @@ def main():
       "assets":merged,"fetchedCount":len(fresh),"coverageCount":len(merged)}
     OUT.parent.mkdir(parents=True,exist_ok=True)
     OUT.write_text(json.dumps(payload,separators=(",",":"),ensure_ascii=False),encoding="utf-8")
+    from recalculate import main as recompute
+    recompute()
     print("Wrote",OUT,"new",len(fresh),"total",len(merged),flush=True)
 
 if __name__=="__main__":
