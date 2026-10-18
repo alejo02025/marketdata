@@ -35,10 +35,15 @@ const colors={up:'#37ca82',down:'#ef586f',e20:'#ffe94d',e50:'#18c7e5',e100:'#a3a
 function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:string}){
  const [hover,setHover]=useState<number|null>(null);
  const all=useMemo(()=>aggregateCandles(candles,frame),[candles,frame]);
- const span=range==='MAX'?all.length:range==='1M'?22:range==='3M'?65:range==='6M'?130:range==='1A'?260:all.length;
- const multiplier=frame==='1W'?5:frame==='1M'?21:frame==='3M'?63:frame==='6M'?126:frame==='12M'?252:1;
- const visibleCount=Math.max(5,Math.ceil(span/multiplier));
- const data=all.slice(-visibleCount),v=all.map(x=>x.c);
+ const lastDate=all.length?new Date(all[all.length-1].d+'T12:00:00Z'):new Date();
+ const cutoff=new Date(lastDate);
+ if(range==='1M')cutoff.setUTCMonth(cutoff.getUTCMonth()-1);
+ else if(range==='3M')cutoff.setUTCMonth(cutoff.getUTCMonth()-3);
+ else if(range==='6M')cutoff.setUTCMonth(cutoff.getUTCMonth()-6);
+ else if(range==='1A')cutoff.setUTCFullYear(cutoff.getUTCFullYear()-1);
+ const firstVisible=range==='MAX'?0:Math.max(0,all.findIndex(c=>new Date(c.d+'T12:00:00Z')>=cutoff));
+ const data=all.slice(firstVisible),v=all.map(x=>x.c);
+ const visibleCount=data.length;
  const averages=[20,50,100,200].map(n=>({n,values:all.length>=n?ema(v,n).slice(-visibleCount):[]}));
  const m=macd(v).slice(-visibleCount);
  if(data.length<2)return <div className="chart-message">No hay suficientes velas reales para este rango. Ampliá el período.</div>;
@@ -76,7 +81,7 @@ function NativeChart({candles,frame,range}:{candles:Candle[];frame:string;range:
    <path d={path(m.map(x=>x.macd),Ymac)} fill="none" stroke="#4b8fff" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
    <path d={path(m.map(x=>x.signal),Ymac)} fill="none" stroke="#faac4e" strokeWidth={2} vectorEffect="non-scaling-stroke"/>
    {hover!==null&&<line x1={X(hover)} x2={X(hover)} y1={top} y2={macBottom} stroke="#cdd9ec" strokeDasharray="4 5" opacity=".55"/>}
-   {[0,.25,.5,.75,1].map((s,i)=>{const index=Math.min(data.length-1,Math.floor((data.length-1)*s));return <text key={i} x={X(index)} y={H-10} textAnchor="middle" fill="#8292a4" fontSize="14">{data[index].d.slice(0,7)}</text>})}
+   {[0,.25,.5,.75,1].map((fraction,i)=>{const index=Math.min(data.length-1,Math.floor((data.length-1)*fraction));const date=new Date(data[index].d+'T12:00:00Z');const label=date.toLocaleDateString('es-AR',{timeZone:'UTC',day:range==='1M'||range==='3M'?'2-digit':undefined,month:'short',year:range==='MAX'||range==='1A'?'2-digit':undefined});return <text key={i} x={X(index)} y={H-10} textAnchor={i===0?'start':i===4?'end':'middle'} fill="#8292a4" fontSize="14">{label}</text>})}
   </svg>
   <div className="chart-footer"><span>Velas verificadas · {data.length} períodos</span><span>Variación del tramo: {percentage((data[data.length-1].c/data[0].c-1)*100,true)}</span></div>
  </div>;
@@ -104,9 +109,9 @@ export default function PriceChart({candles,ticker}:{candles:Candle[];ticker:str
  useEffect(()=>{setFrame(frames[11]);setRange('1A');setOpen(false)},[ticker]);
  return <div className="chart-terminal">
   <div className="terminal-toolbar"><div className="time-selector"><button className="time-trigger" aria-expanded={open} aria-haspopup="listbox" onClick={()=>setOpen(v=>!v)}>{frame.label}<ChevronDown size={16}/></button>
-   {open&&<div className="time-menu" role="listbox" aria-label="Intervalos de tiempo">{['MINUTOS','HORAS','DÍAS','MESES'].map(group=><div key={group}><span className="time-group">{group}</span>{frames.filter(f=>f.group===group).map(f=><button type="button" role="option" aria-selected={frame.code===f.code} key={f.code} className={frame.code===f.code?'is-selected':''} onClick={()=>{setFrame(f);setRange(f.code==='1D'?'1A':'MAX');setOpen(false)}}>{f.label}{f.tv&&<small>TV</small>}</button>)}</div>)}</div>}
+   {open&&<div className="time-menu" role="listbox" aria-label="Intervalos de tiempo">{['MINUTOS','HORAS','DÍAS','MESES'].map(group=><div key={group}><span className="time-group">{group}</span>{frames.filter(f=>f.group===group).map(f=><button type="button" role="option" aria-selected={frame.code===f.code} key={f.code} className={frame.code===f.code?'is-selected':''} onClick={()=>{setFrame(f);setOpen(false)}}>{f.label}{f.tv&&<small>TV</small>}</button>)}</div>)}</div>}
   </div>
-  {!frame.tv&&<div className="range-selector">{['1M','3M','6M','1A','MAX'].map(v=><button key={v} className={range===v?'active':''} onClick={()=>setRange(v)}>{v}</button>)}</div>}
+  {!frame.tv&&<div className="range-selector" aria-label="Período visible">{['1M','3M','6M','1A','MAX'].map(v=><button key={v} className={range===v?'active':''} onClick={()=>setRange(v)}>{v}</button>)}</div>}
   <span className="terminal-source">{frame.tv?'INTRADÍA · TRADINGVIEW':'HISTÓRICOS DIARIOS · YAHOO'}</span>
   </div>
   {frame.tv?<TradingViewChart symbol={ticker} code={frame.code}/>:<NativeChart candles={candles} frame={frame.code} range={range}/>}
