@@ -50,5 +50,75 @@
       "title": "BCRA · Currency bands",
       "url": "https://www.bcra.gob.ar/regimen-de-bandas-cambiarias/"
     }
-  ]
+  ],
+  "webBrief": {
+    "updatedAt": "2026-10-19T11:24:04-03:00",
+    "metrics": [
+      {
+        "label": "Riesgo país",
+        "value": "648",
+        "change": "+26 pb",
+        "movement": "up",
+        "asOf": "Cierre 16/10"
+      },
+      {
+        "label": "Dólar MEP",
+        "value": "$1.536,73",
+        "asOf": "Referencia 19/10"
+      },
+      {
+        "label": "Dólar CCL",
+        "value": "$1.613,31",
+        "asOf": "Referencia 19/10"
+      },
+      {
+        "label": "S&P 500",
+        "value": "7.659,44",
+        "change": "−1,09%",
+        "movement": "down",
+        "asOf": "Cierre 16/10"
+      },
+      {
+        "label": "Nasdaq",
+        "value": "26.140,03",
+        "change": "−2,15%",
+        "movement": "down",
+        "asOf": "Cierre 16/10"
+      },
+      {
+        "label": "TAMAR",
+        "value": "24,50%",
+        "asOf": "TNA · dato 15/10"
+      }
+    ],
+    "highlights": [
+      {
+        "tag": "Wall Street",
+        "title": "Rebote en tecnológicas",
+        "summary": "El S&P 500 y Nasdaq comenzaron en alza tras las bajas del viernes. Falta confirmar si el repunte se sostiene."
+      },
+      {
+        "tag": "Empresas",
+        "title": "Semana clave de balances",
+        "summary": "Netflix, General Motors, Meta y Tesla concentran la atención. Importan los resultados y las perspectivas sobre IA."
+      },
+      {
+        "tag": "Mercados globales",
+        "title": "Bajan petróleo y rendimientos",
+        "summary": "El alivio inicial ayuda a las acciones de crecimiento, pero persisten riesgos geopolíticos."
+      }
+    ],
+    "argentina": [
+      "Riesgo país: 648 pb al cierre del viernes; los bonos siguen bajo presión.",
+      "Inflación de septiembre: 1,9%. Las tasas reales afectan los precios de los bonos CER.",
+      "TAMAR: 24,50% TNA (15/10). Seguir liquidez de pesos, dólar financiero y próximas licitaciones."
+    ],
+    "watch": [
+      "Bonos soberanos",
+      "MEP y CCL",
+      "Tasas de EE. UU.",
+      "Balances tecnológicos"
+    ],
+    "takeaway": "Wall Street intenta recuperarse, pero una apertura positiva no confirma tendencia. En acciones, priorizar resultados, volumen y medias 20/50/200; en Argentina, vigilar bonos y dólares financieros."
+  }
 }
