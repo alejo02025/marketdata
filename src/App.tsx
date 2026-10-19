@@ -103,7 +103,7 @@ export default function App(){
    const edition:Daily=await response.json();
    if(edition.schema!==1||typeof edition.bodyMarkdown!=='string'||!['awaiting','published'].includes(edition.status))
     throw new Error('El formato del briefing publicado no es válido.');
-   if(edition.status==='published'&&(!edition.bodyMarkdown.trim()||!/\\d{4}-\\d{2}-\\d{2}/.test(edition.date)))
+   if(edition.status==='published'&&(!edition.bodyMarkdown.trim()||!/\d{4}-\d{2}-\d{2}/.test(edition.date)))
     throw new Error('La edición publicada está incompleta.');
    setDaily(edition);setDailyError('');
   }catch(e){setDailyError(e instanceof Error?e.message:'No se pudo actualizar la edición.');}
