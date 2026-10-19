@@ -31,7 +31,7 @@ for(const width of [1440,390]){
   await page.screenshot({path:`test-results/analysis-${width}.png`,fullPage:true});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('button',{name:'Daily',exact:true}).click();
-  await expect(page.getByRole('heading',{name:/Market Daily/})).toBeVisible();
+  await expect(page.locator('.daily-v2-heading h1')).toHaveText('Daily.');
   await expect(page.locator('.daily-v2-metrics, .daily-v2-pending')).toBeVisible();
   await expect(page.locator('.daily-article')).toHaveCount(0);
   await page.screenshot({path:`test-results/daily-${width}.png`,fullPage:true});
