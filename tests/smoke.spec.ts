@@ -47,3 +47,18 @@ test('retains last good snapshot on refresh and reload failure',async({page})=>{
  await page.reload();await expect(page.locator('.board-stock')).toHaveCount(18);
  await expect(page.locator('.board-stock-scroll')).not.toContainText('Sin datos');
 });
+
+test('Daily renders one canonical Markdown edition and refreshes it',async({page})=>{
+ const body='# Market Briefing\\n\\n**EN:** Markets closed higher.\\n\\n**ES:** Los mercados cerraron al alza.';
+ const edition={schema:1,date:'2026-10-19',title:'LO QUE NECESITÁS SABER PARA ARRANCAR LA JORNADA',
+  status:'published',generatedAt:'2026-10-19T07:30:00-03:00',bodyMarkdown:body,sourceLinks:[]};
+ await page.route('**/data/daily.json*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(edition)}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Daily',exact:true}).click();
+ await expect(page.locator('.daily-article h1')).toHaveText('Market Briefing');
+ await expect(page.locator('.daily-article')).toContainText('Markets closed higher.');
+ await expect(page.locator('.daily-article')).toContainText('Los mercados cerraron al alza.');
+ await expect(page.locator('.daily-date')).toHaveText(edition.date);
+ await page.getByRole('button',{name:'Actualizar Daily'}).click();
+ await expect(page.locator('.daily-article h1')).toHaveText('Market Briefing');
+});
