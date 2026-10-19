@@ -1,9 +1,7 @@
 import {lazy,Suspense,useCallback,useEffect,useMemo,useState} from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import {Activity,ArrowDownRight,ArrowUpRight,BarChart3,BookOpen,Check,ChevronDown,ChevronRight,Clock3,Copy,ExternalLink,Filter,Info,Menu,Plus,RefreshCw,Search,ShieldAlert,ShieldCheck,Target,TrendingUp,X} from 'lucide-react';
+import {Activity,ArrowDownRight,ArrowUpRight,BarChart3,Check,ChevronDown,ChevronRight,Clock3,ExternalLink,Filter,Info,Menu,Plus,RefreshCw,Search,ShieldAlert,ShieldCheck,Target,TrendingUp,X} from 'lucide-react';
 const PriceChart=lazy(()=>import('./PriceChart'));
-import {money,percentage,readLocal,saveLocal,shortDate,sourceLinks,statusColor,tickers,validTicker} from './market';
+import {money,percentage,readLocal,saveLocal,shortDate,statusColor,tickers,validTicker} from './market';
 import type {Asset,Daily,Snapshot} from './market';
 import './style.css';
 
@@ -151,10 +149,7 @@ export default function App(){
  function go(which:Page){setPage(which);setNavOpen(false);setToast('')}
  function analyze(t:string){setTicker(t);go('analysis')}
  function addTicker(e:React.FormEvent){e.preventDefault();const s=newTicker.trim().toUpperCase();if(!validTicker(s)){setToast('El ticker no es válido.');return}setWatch(w=>Array.from(new Set([s,...w])));setNewTicker('');setToast('Ticker agregado. Aparecerá sin cobertura hasta el próximo refresh autorizado.')}
- async function copyDaily(){
-  if(!daily?.bodyMarkdown)return;
-  try{await navigator.clipboard.writeText(daily.bodyMarkdown);setToast('Briefing copiado, sin modificar el texto.')}catch{setToast('No se pudo copiar automáticamente desde el navegador.')}
- }
+
  return <div className="radar-app"><PulseBackdrop/>
  <header className="app-header"><div className="nav-inner">
   <button className="identity" onClick={()=>go('radar')}><span className="identity-mark"><img src={import.meta.env.BASE_URL+'logo.svg'} alt="Market Radar" width="39" height="39"/></span><span className="identity-label"><b>MARKET<span>RADAR</span></b><small>SIGNAL INTELLIGENCE</small></span></button>
@@ -250,15 +245,56 @@ export default function App(){
    </details>
   </>:<div className="simple-empty"><Info size={20}/><div><b>Sin datos disponibles</b><span>Este ticker requiere un histórico verificado.</span></div></div>}
  </>}
- {page==='daily'&&<>
-  <div className="page-title"><div><span className="eyebrow">DAILY RESEARCH / ARGENTINA & GLOBAL MARKETS</span><h1>Market Daily<span>.</span></h1><p>El mismo briefing que recibís en ChatGPT, en inglés B1 y español.</p></div>
-   <div className="daily-actions"><button className="copy-button" onClick={()=>void fetchDaily()} disabled={dailyLoading}><RefreshCw size={15}/> {dailyLoading?'Consultando…':'Actualizar Daily'}</button>{daily?.status==='published'&&<button className="copy-button" onClick={copyDaily}><Copy size={15}/> Copiar texto exacto</button>}</div>
+ {page==='daily'&&<div className="daily-v2">
+  <div className="daily-v2-heading">
+   <div><div className="daily-v2-eyebrow"><span className="daily-v2-dot"/> MARKET RADAR / DAILY</div><h1>Daily<span>.</span></h1><p>Lo que necesitás saber para arrancar la jornada.</p></div>
+   <button type="button" className="daily-v2-refresh" onClick={()=>void fetchDaily()} disabled={dailyLoading} aria-label="Actualizar Daily"><RefreshCw size={16}/><span>{dailyLoading?'Actualizando…':'Actualizar'}</span></button>
   </div>
-  <div className="daily-hero"><div><span className="eyebrow">MORNING BRIEF · CHATGPT + WEB</span><h2>LO QUE NECESITÁS SABER<br/>PARA ARRANCAR LA JORNADA.</h2><p>Una sola edición para ChatGPT y Market Radar. La web se actualiza después del despliegue en GitHub Pages.</p></div><div className="daily-date">{daily?.status==='published'?daily.date:'Edición pendiente'}</div></div>
-  {dailyError&&<div className="source-warning"><Info size={15}/> {dailyError} {daily?.status==='published'?'Se mantiene la última edición cargada.':'Intentá actualizar más tarde.'}</div>}
-  {daily?.status==='published'&&daily.bodyMarkdown.trim()?<article className="daily-article"><div className="daily-meta"><BookOpen size={17}/> Edición {daily.date} · archivo publicado en GitHub · mismo texto canónico del briefing del chat</div><ReactMarkdown remarkPlugins={[remarkGfm]}>{daily.bodyMarkdown}</ReactMarkdown></article>:
-    <section className="daily-pending"><BookOpen size={29}/><h3>Esperando la primera edición compartida</h3><p>El briefing diario se enviará a ChatGPT y se guardará en GitHub para esta misma sección. No se publican noticias ni cotizaciones inventadas.</p><small>La edición aparece en la web cuando finaliza su despliegue. No necesariamente al mismo minuto que en ChatGPT.</small></section>}
-  <div className="module-header"><div><span className="eyebrow">RESEARCH DESK</span><h2>Fuentes prioritarias</h2></div></div><div className="source-grid">{sourceLinks.map(s=><a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" className="source-tile"><span>{s.label.slice(0,1)}</span><h3>{s.label}</h3><p>{s.description}</p><ExternalLink size={15}/></a>)}</div>
- </>}
+  {dailyError&&<div className="source-warning"><Info size={15}/> {dailyError} {daily?.status==='published'?'Se conserva la última edición.':'Volvé a consultar más tarde.'}</div>}
+  {daily?.status==='published'&&daily.webBrief?<>
+   <div className="daily-v2-datebar">
+    <span><Clock3 size={14}/> {shortDate(daily.date)} <i/> Resumen en español</span>
+    <small>Datos de diferentes momentos · revisar referencias</small>
+   </div>
+   <div className="daily-v2-metrics" aria-label="Principales indicadores financieros">
+    {daily.webBrief.metrics.slice(0,6).map((m,i)=><div className="daily-v2-metric" key={m.label+i}>
+     <span className="daily-v2-metric-label">{m.label}</span>
+     <div className="daily-v2-metric-main"><strong>{m.value}</strong>{m.change&&<span className={'daily-v2-metric-change '+(m.movement||'flat')}>{m.change}</span>}</div>
+     <small>{m.asOf}</small>
+    </div>)}
+   </div>
+   <div className="daily-v2-columns">
+    <section className="daily-v2-panel">
+     <div className="daily-v2-panel-header"><div><span className="daily-v2-kicker">01 / INTERNACIONAL</span><h2>Lo importante de hoy</h2></div><TrendingUp size={18}/></div>
+     <div className="daily-v2-stories">
+      {daily.webBrief.highlights.slice(0,3).map((h,i)=><article className="daily-v2-story" key={h.title+i}>
+       <span className="daily-v2-story-number">{String(i+1).padStart(2,'0')}</span>
+       <div><span className="daily-v2-story-tag">{h.tag||'Mercados'}</span><h3>{h.title}</h3><p>{h.summary}</p></div>
+      </article>)}
+     </div>
+    </section>
+    <section className="daily-v2-panel daily-v2-argentina">
+     <div className="daily-v2-panel-header"><div><span className="daily-v2-kicker">02 / MERCADO LOCAL</span><h2>Argentina</h2></div><span className="daily-v2-flag" aria-hidden="true">🇦🇷</span></div>
+     <ul className="daily-v2-local">{daily.webBrief.argentina.slice(0,4).map((v,i)=><li key={i}><span className="daily-v2-bullet"/><p>{v}</p></li>)}</ul>
+    </section>
+   </div>
+   <div className="daily-v2-outlook">
+    <section className="daily-v2-today">
+     <div className="daily-v2-kicker">03 / SEGUIMIENTO</div><h2>Qué mirar</h2>
+     <div className="daily-v2-watch-items">{daily.webBrief.watch.slice(0,5).map(v=><span key={v}><Check size={14}/>{v}</span>)}</div>
+    </section>
+    <section className="daily-v2-conclusion">
+     <div className="daily-v2-kicker">LECTURA DEL DÍA</div><h2>En síntesis</h2><p>{daily.webBrief.takeaway}</p>
+    </section>
+   </div>
+   <details className="daily-v2-sources"><summary>Fuentes, horarios y metodología <ChevronDown size={16}/></summary>
+    <div className="daily-v2-sources-content">
+     <p>Edición {daily.date}. Las métricas muestran su fecha de referencia: no se presentan como cotizaciones simultáneas ni necesariamente en tiempo real.</p>
+     <div className="daily-v2-source-links">{(daily.sourceLinks||[]).map((source,i)=><a key={source.url+i} href={source.url} target="_blank" rel="noopener noreferrer">{source.title}<ExternalLink size={12}/></a>)}</div>
+     <p>El resumen web está basado en el briefing de ChatGPT, pero está editado para lectura rápida, solo en español. No constituye una recomendación de inversión.</p>
+    </div>
+   </details>
+  </>:<section className="daily-v2-pending"><Clock3 size={22}/><h2>Esperando el resumen web</h2><p>Cuando esté disponible una edición resumida y verificada en español aparecerá aquí. No mostramos el artículo bilingüe completo ni inventamos datos.</p></section>}
+ </div>}
  </main></div>;
 }
