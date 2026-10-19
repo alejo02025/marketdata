@@ -49,7 +49,7 @@ test('retains last good snapshot on refresh and reload failure',async({page})=>{
 });
 
 test('Daily renders one canonical Markdown edition and refreshes it',async({page})=>{
- const body='# Market Briefing\\n\\n**EN:** Markets closed higher.\\n\\n**ES:** Los mercados cerraron al alza.';
+ const body='# Market Briefing\n\n**EN:** Markets closed higher.\n\n**ES:** Los mercados cerraron al alza.';
  const edition={schema:1,date:'2026-10-19',title:'LO QUE NECESITÁS SABER PARA ARRANCAR LA JORNADA',
   status:'published',generatedAt:'2026-10-19T07:30:00-03:00',bodyMarkdown:body,sourceLinks:[]};
  await page.route('**/data/daily.json*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(edition)}));
