@@ -103,6 +103,16 @@ export default function App(){
     throw new Error('El formato del briefing publicado no es válido.');
    if(edition.status==='published'&&(!edition.bodyMarkdown.trim()||!/\d{4}-\d{2}-\d{2}/.test(edition.date)))
     throw new Error('La edición publicada está incompleta.');
+   if(edition.status==='published'&&edition.webBrief){
+    const b=edition.webBrief;
+    if(!Array.isArray(b.metrics)||b.metrics.length===0||
+       b.metrics.some(m=>!m||typeof m.label!=='string'||typeof m.value!=='string'||typeof m.asOf!=='string')||
+       !Array.isArray(b.highlights)||b.highlights.some(h=>!h||typeof h.title!=='string'||typeof h.summary!=='string')||
+       !Array.isArray(b.argentina)||b.argentina.some(v=>typeof v!=='string')||
+       !Array.isArray(b.watch)||b.watch.some(v=>typeof v!=='string')||
+       typeof b.takeaway!=='string'||!b.takeaway.trim())
+     throw new Error('El resumen para la web está incompleto o tiene un formato inválido.');
+   }
    setDaily(edition);setDailyError('');
   }catch(e){setDailyError(e instanceof Error?e.message:'No se pudo actualizar la edición.');}
   finally{setDailyLoading(false);}
