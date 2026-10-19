@@ -663,3 +663,13 @@ button:focus-visible,summary:focus-visible,select:focus-visible,input:focus-visi
 .ma-trend strong,.ma-trend small{font-size:9px}
 .ma-foot span{font-size:8px}
 }
+
+/* Daily uses one edition for ChatGPT and GitHub Pages. */
+.daily-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px}
+.daily-actions .copy-button{display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+.daily-actions .copy-button:disabled{opacity:.65;cursor:progress}
+.daily-hero .daily-date{overflow-wrap:anywhere}
+@media(max-width:650px){
+.daily-actions{width:100%;justify-content:flex-start}
+.daily-actions .copy-button{font-size:11px;padding:10px 12px}
+}
