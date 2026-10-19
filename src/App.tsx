@@ -71,6 +71,8 @@ export default function App(){
  const [ticker,setTicker]=useState('GOOGL');
  const [snapshot,setSnapshot]=useState<Snapshot|null>(()=>readLocal<Snapshot|null>('market-radar-snapshot-v3',null));
  const [daily,setDaily]=useState<Daily|null>(null);
+ const [dailyLoading,setDailyLoading]=useState(false);
+ const [dailyError,setDailyError]=useState('');
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  const [query,setQuery]=useState('');
@@ -93,12 +95,31 @@ export default function App(){
  },[]);
  useEffect(()=>{fetchData()},[fetchData]);
  useEffect(()=>{saveLocal('market-radar-watch-v1',watch)},[watch]);
- useEffect(()=>{
-  fetch(import.meta.env.BASE_URL+'data/daily.json?cache='+Date.now(),{cache:'no-store'})
-   .then(r=>{if(!r.ok)throw new Error('Sin edición');return r.json()})
-   .then((d:Daily)=>{if(d.schema===1&&typeof d.bodyMarkdown==='string')setDaily(d)})
-   .catch(()=>setDaily(null));
+ const fetchDaily=useCallback(async()=>{
+  setDailyLoading(true);
+  try{
+   const response=await fetch(import.meta.env.BASE_URL+'data/daily.json?cache='+Date.now(),{cache:'no-store'});
+   if(!response.ok)throw new Error('No se pudo consultar la edición de GitHub Pages.');
+   const edition:Daily=await response.json();
+   if(edition.schema!==1||typeof edition.bodyMarkdown!=='string'||!['awaiting','published'].includes(edition.status))
+    throw new Error('El formato del briefing publicado no es válido.');
+   if(edition.status==='published'&&(!edition.bodyMarkdown.trim()||!/\\d{4}-\\d{2}-\\d{2}/.test(edition.date)))
+    throw new Error('La edición publicada está incompleta.');
+   setDaily(edition);setDailyError('');
+  }catch(e){setDailyError(e instanceof Error?e.message:'No se pudo actualizar la edición.');}
+  finally{setDailyLoading(false);}
  },[]);
+ useEffect(()=>{void fetchDaily()},[fetchDaily]);
+ // A GitHub Pages deployment can finish while Daily is open. Refresh on entry,
+ // when returning to the tab, and every five minutes without reloading the app.
+ useEffect(()=>{
+  if(page!=='daily')return;
+  void fetchDaily();
+  const onVisible=()=>{if(document.visibilityState==='visible')void fetchDaily()};
+  document.addEventListener('visibilitychange',onVisible);
+  const handle=window.setInterval(()=>{void fetchDaily()},300000);
+  return ()=>{document.removeEventListener('visibilitychange',onVisible);window.clearInterval(handle)};
+ },[page,fetchDaily]);
  const current=assets[ticker];
  const latestSession=Object.values(assets).map(a=>a.lastSession).sort().slice(-1)[0];
  const runDate=latestSession?displayDate(latestSession):null;
@@ -230,10 +251,13 @@ export default function App(){
   </>:<div className="simple-empty"><Info size={20}/><div><b>Sin datos disponibles</b><span>Este ticker requiere un histórico verificado.</span></div></div>}
  </>}
  {page==='daily'&&<>
-  <div className="page-title"><div><span className="eyebrow">DAILY RESEARCH / ARGENTINA & GLOBAL MARKETS</span><h1>Market Daily<span>.</span></h1><p>Briefings en español e inglés B1. Fecha y fuentes de cada edición.</p></div>{daily?.status==='published'&&<button className="copy-button" onClick={copyDaily}><Copy size={15}/> Copiar briefing exacto</button>}</div>
-  <div className="daily-hero"><div><span className="eyebrow">MORNING BRIEF · NIVEL B1 + ESPAÑOL</span><h2>LO QUE NECESITÁS SABER<br/>PARA ARRANCAR LA JORNADA.</h2><p>Mercados internacionales, Argentina, tasas, dólares, bonos, riesgos y calendario.</p></div><div className="daily-date">{daily?.date||new Date().toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'})}</div></div>
-  {daily?.status==='published'&&daily.bodyMarkdown.trim()?<article className="daily-article"><div className="daily-meta"><BookOpen size={17}/> Edición {daily.date} · edición publicada · sin sincronización automática con ChatGPT</div><ReactMarkdown remarkPlugins={[remarkGfm]}>{daily.bodyMarkdown}</ReactMarkdown></article>:
-    <section className="daily-pending"><BookOpen size={29}/><h3>No hay edición verificada publicada todavía</h3><p>Todavía no se cargó un briefing en español e inglés B1. No se muestran noticias antiguas como actuales.</p><small>La entrega en ChatGPT es independiente. No hay sincronización automática verificada.</small></section>}
+  <div className="page-title"><div><span className="eyebrow">DAILY RESEARCH / ARGENTINA & GLOBAL MARKETS</span><h1>Market Daily<span>.</span></h1><p>El mismo briefing que recibís en ChatGPT, en inglés B1 y español.</p></div>
+   <div className="daily-actions"><button className="copy-button" onClick={()=>void fetchDaily()} disabled={dailyLoading}><RefreshCw size={15}/> {dailyLoading?'Consultando…':'Actualizar Daily'}</button>{daily?.status==='published'&&<button className="copy-button" onClick={copyDaily}><Copy size={15}/> Copiar texto exacto</button>}</div>
+  </div>
+  <div className="daily-hero"><div><span className="eyebrow">MORNING BRIEF · CHATGPT + WEB</span><h2>LO QUE NECESITÁS SABER<br/>PARA ARRANCAR LA JORNADA.</h2><p>Una sola edición para ChatGPT y Market Radar. La web se actualiza después del despliegue en GitHub Pages.</p></div><div className="daily-date">{daily?.status==='published'?daily.date:'Edición pendiente'}</div></div>
+  {dailyError&&<div className="source-warning"><Info size={15}/> {dailyError} {daily?.status==='published'?'Se mantiene la última edición cargada.':'Intentá actualizar más tarde.'}</div>}
+  {daily?.status==='published'&&daily.bodyMarkdown.trim()?<article className="daily-article"><div className="daily-meta"><BookOpen size={17}/> Edición {daily.date} · archivo publicado en GitHub · mismo texto canónico del briefing del chat</div><ReactMarkdown remarkPlugins={[remarkGfm]}>{daily.bodyMarkdown}</ReactMarkdown></article>:
+    <section className="daily-pending"><BookOpen size={29}/><h3>Esperando la primera edición compartida</h3><p>El briefing diario se enviará a ChatGPT y se guardará en GitHub para esta misma sección. No se publican noticias ni cotizaciones inventadas.</p><small>La edición aparece en la web cuando finaliza su despliegue. No necesariamente al mismo minuto que en ChatGPT.</small></section>}
   <div className="module-header"><div><span className="eyebrow">RESEARCH DESK</span><h2>Fuentes prioritarias</h2></div></div><div className="source-grid">{sourceLinks.map(s=><a key={s.label} href={s.url} target="_blank" rel="noopener noreferrer" className="source-tile"><span>{s.label.slice(0,1)}</span><h3>{s.label}</h3><p>{s.description}</p><ExternalLink size={15}/></a>)}</div>
  </>}
  </main></div>;
